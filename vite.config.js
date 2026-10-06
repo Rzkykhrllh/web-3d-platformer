@@ -45,7 +45,7 @@ function staticPortfolio() {
     },
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        if (req.url?.split('?')[0] !== '/portfolio.html') return next();
+        if (!req.url?.split('?')[0].endsWith('/portfolio.html')) return next();
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.end(pageHTML());
       });
@@ -57,8 +57,9 @@ function staticPortfolio() {
 }
 
 export default defineConfig({
-  // Relative asset paths, so the build works on any static host or sub-path
-  base: './',
+  // Served at game.byairu.com/island. Absolute paths, so /island works
+  // without a trailing slash. BASE_PATH=/ npm run build for a root deploy.
+  base: process.env.BASE_PATH || '/island/',
   // 3000 is taken by other local work; if 4000 is busy too, Vite moves on to 4001, 4002, ...
   server: { port: 4000 },
   plugins: [staticPortfolio()]

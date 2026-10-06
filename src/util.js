@@ -10,6 +10,9 @@ export const mesh = (geo, material, cast = true, receive = true) => {
   return m;
 };
 
+// URL of a file in public/, wherever the game is served from (see `base` in vite.config.js)
+export const publicUrl = path => (/^([a-z]+:|\/)/i.test(path) ? path : import.meta.env.BASE_URL + path);
+
 // Seeded random so the level looks the same on every load
 export function seededRandom(seed) {
   return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };

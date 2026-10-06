@@ -4,7 +4,7 @@ import { PLAYER, FEEL, LEVEL_URL, CHARACTER } from './config.js';
 import { createPip } from './pip.js';
 import { createCat } from './characters/cat.js';
 import { loadCatModel, createCatModel } from './characters/cat-model.js';
-import { seededRandom, mat } from './util.js';
+import { seededRandom, mat, publicUrl } from './util.js';
 import { createWorld } from './world.js';
 import { createPlayer } from './player.js';
 import { createCameraRig } from './camera.js';
@@ -165,7 +165,7 @@ async function load() {
   // ?level=levels/my-level.glb loads a level built in Blender instead of the built-in one
   const levelUrl = new URLSearchParams(location.search).get('level') || LEVEL_URL;
   if (levelUrl) {
-    level = await loadGltfLevel(levelUrl, scene, p => ui.setLoading(0.4 + p * 0.2, 'Loading level…'));
+    level = await loadGltfLevel(publicUrl(levelUrl), scene, p => ui.setLoading(0.4 + p * 0.2, 'Loading level…'));
     scenery = { grass: null, torches: [], update() {} };
   } else {
     level = proceduralLevel();

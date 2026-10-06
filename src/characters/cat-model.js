@@ -3,13 +3,14 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { toon } from '../render/toon.js';
+import { publicUrl } from '../util.js';
 
 // The tabby cat as a rigged model (generated from the reference art, rigged in
 // Mixamo; see public/models/cat.glb). Same interface as the procedural
 // characters, plus `animated: true` and update(dt, playerState), which picks
 // and blends the animation clips. Faces +z with its feet at y = 0.
 
-export const CAT_MODEL_URL = 'models/cat.glb';
+export const CAT_MODEL_URL = publicUrl('models/cat.glb');
 const HEIGHT = 1.95; // ear tip to sole, about the same as the procedural cat
 
 const FPS = 30;

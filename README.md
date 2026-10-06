@@ -9,7 +9,9 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:4000 (if that port is busy, Vite picks the next free one and prints the URL).
+Then open http://localhost:4000/island/ (if that port is busy, Vite picks the next free one and prints the URL).
+
+The game is built for `game.byairu.com/island` (`base` in `vite.config.js`), with absolute asset paths so `/island` works with or without a trailing slash. For a deploy at the domain root, build with `BASE_PATH=/ npm run build`.
 
 | URL option | What it does |
 |---|---|
@@ -17,7 +19,7 @@ Then open http://localhost:4000 (if that port is busy, Vite picks the next free 
 | `?level=levels/sample.gltf` | Load a level exported from Blender instead of the built-in one |
 | `?char=pip` | Play as Pip instead of the cat (default set by `CHARACTER` in `src/config.js`) |
 
-`/character.html` (dev only) shows a character on its own with front / side / back views and a run cycle, for comparing against reference art.
+`/island/character.html` (dev only) shows a character on its own with front / side / back views and a run cycle, for comparing against reference art.
 
 ## Controls
 
@@ -75,7 +77,7 @@ The built-in level is described in `src/level.js`. A level can also be built in 
 Anything else is scenery and gets shadows. Colliders are axis-aligned boxes, so keep walkable pieces box-shaped and unrotated (rotate the visual mesh and use a `COL_` box under it if needed).
 
 3. Export as glTF Binary (`.glb`) into `public/levels/`, with **Custom Properties** enabled so the properties above come through. Draco or Meshopt compression is supported.
-4. Open `http://localhost:4000/?level=levels/your-level.glb`, or set `LEVEL_URL` in `src/config.js`.
+4. Open `http://localhost:4000/island/?level=levels/your-level.glb`, or set `LEVEL_URL` in `src/config.js`.
 
 `node scripts/make-sample-level.mjs` writes `public/levels/sample.gltf`, a small level that uses every convention above; import it into Blender to see a working setup.
 

@@ -1,4 +1,5 @@
 import { AUDIO } from './config.js';
+import { publicUrl } from './util.js';
 
 // All sound effects are synthesised with Web Audio, so there are no files to load.
 // They are placeholders with the right timing and character; swap in recorded
@@ -126,7 +127,7 @@ export function createAudio() {
   function startMusic() {
     if (!ctx || music) return;
     if (AUDIO.musicUrl) {
-      const el = new Audio(AUDIO.musicUrl);
+      const el = new Audio(publicUrl(AUDIO.musicUrl));
       el.loop = true;
       const src = ctx.createMediaElementSource(el);
       src.connect(musicBus);
