@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:4000.
+Then open http://localhost:4000 (if that port is busy, Vite picks the next free one and prints the URL).
 
 | URL option | What it does |
 |---|---|

@@ -59,7 +59,7 @@ function staticPortfolio() {
 export default defineConfig({
   // Relative asset paths, so the build works on any static host or sub-path
   base: './',
-  // 3000 is taken by other local work
-  server: { port: 4000, strictPort: true },
+  // 3000 is taken by other local work; if 4000 is busy too, Vite moves on to 4001, 4002, ...
+  server: { port: 4000 },
   plugins: [staticPortfolio()]
 });
