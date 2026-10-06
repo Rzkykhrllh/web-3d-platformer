@@ -54,5 +54,6 @@ export const AUDIO = {
 // null uses the built-in level from level.js. ?level=... in the URL overrides it.
 export const LEVEL_URL = null;
 
-// Player character: 'cat' or 'pip'. ?char=pip in the URL overrides it.
+// Player character: 'cat' (the rigged model in public/models/cat.glb, or the
+// procedural cat if it fails to load), 'cat-procedural' or 'pip'. ?char=... in the URL overrides it.
 export const CHARACTER = 'cat';

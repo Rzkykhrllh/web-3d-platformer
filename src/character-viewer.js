@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createCat } from './characters/cat.js';
+import { loadCatModel, createCatModel } from './characters/cat-model.js';
 import { createPip } from './pip.js';
 
 // Dev-only page (/character.html) for comparing a character against its reference art.
@@ -30,14 +31,17 @@ floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-const makers = { cat: createCat, pip: createPip };
+const makers = { model: async () => createCatModel(await loadCatModel()), cat: createCat, pip: createPip };
 let model = null, anim = 'idle', spin = false, walk = 0;
-function show(name) {
+async function show(name) {
+  const next = await makers[name]();
   if (model) scene.remove(model.root);
-  model = makers[name]();
+  model = next;
   scene.add(model.root);
 }
-show(new URLSearchParams(location.search).get('char') || 'cat');
+show(new URLSearchParams(location.search).get('char') || 'model');
+// Fake player state for the rigged model's clip picker
+const fake = { spin: 0, state: 'idle', onGround: true, vel: new THREE.Vector3() };
 
 const views = { front: 0, side: Math.PI / 2, back: Math.PI };
 document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
@@ -63,9 +67,16 @@ resize();
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = clock.getDelta();
+  if (!model) return;
   if (spin) model.root.rotation.y += dt * 0.8;
-  // Same run cycle as player.js
   const running = anim === 'run';
+  if (model.animated) {
+    fake.vel.z = running ? 8 : 0;
+    model.update(dt, fake);
+    renderer.render(scene, camera);
+    return;
+  }
+  // Same run cycle as player.js
   walk += running ? dt * 17 : 0;
   model.body.position.y = running ? Math.abs(Math.sin(walk)) * 0.12 : Math.sin(clock.elapsedTime * 2) * 0.01;
   model.body.rotation.x = running ? 0.15 : 0;

@@ -3,6 +3,7 @@ import './style.css';
 import { PLAYER, FEEL, LEVEL_URL, CHARACTER } from './config.js';
 import { createPip } from './pip.js';
 import { createCat } from './characters/cat.js';
+import { loadCatModel, createCatModel } from './characters/cat-model.js';
 import { seededRandom, mat } from './util.js';
 import { createWorld } from './world.js';
 import { createPlayer } from './player.js';
@@ -67,7 +68,7 @@ const state = {
   hitStop: 0, simTime: 0, lastStep: 0
 };
 
-let level, settings, tierName, tier, post, rig, player, factory, enemies, platforms, hazards, scenery, sky, water, fruits, pickups;
+let level, settings, tierName, tier, post, rig, player, factory, enemies, platforms, hazards, scenery, sky, water, fruits, pickups, catModel;
 const ghosts = [];
 
 const ui = createUI({
@@ -171,6 +172,9 @@ async function load() {
     scenery = buildScenery(scene, { textures, quality: tier, rand });
   }
   for (const s of level.surfaces) world.addSurface({ ...s });
+  ui.setLoading(0.6, 'Waking the cat…');
+  // The rigged cat; if it can't load, the procedural one stands in
+  catModel = await loadCatModel().catch(err => { console.warn('Cat model failed to load, using the procedural cat', err); return null; });
   ui.setLoading(0.65, 'Hiding fruit…');
   await nextFrame();
   buildEntities();
@@ -237,9 +241,9 @@ function buildEntities() {
   ui.initPickups(!!pickups.crystal);
   if (!state.crateTotal) pickups.openGem(); // nothing to break
 
-  const characters = { cat: createCat, pip: createPip };
+  const characters = { cat: catModel ? () => createCatModel(catModel) : createCat, 'cat-procedural': createCat, pip: createPip };
   const charName = new URLSearchParams(location.search).get('char') || CHARACTER;
-  player = createPlayer(scene, world, playerEvents, characters[charName] ?? createCat);
+  player = createPlayer(scene, world, playerEvents, characters[charName] ?? characters.cat);
   state.checkpoint.copy(level.checkpoints[0]);
   player.reset(state.checkpoint);
   rig = createCameraRig(camera, level.path);
@@ -527,6 +531,7 @@ function finish() {
   audio.play('warp');
   fx.sparkle(pickups.exit.at.clone().setY(pickups.exit.at.y + 1), 0x8fe8ff, 30);
   rig.setMode('finish');
+  player.model.play?.('victory');
   ui.showFinish({
     secs: Math.round(state.playTime),
     fruit: state.fruit, fruitTotal: fruits.length + BOUNCE_HITS,

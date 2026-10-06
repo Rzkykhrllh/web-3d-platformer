@@ -207,9 +207,11 @@ export function createPlayer(scene, world, events, createModel = createPip) {
     const running = s.onGround && speed > 0.6;
     s.walk += running ? dt * (8 + speed * 1.1) : 0;
     const reduce = events.reduceMotion?.();
-    model.body.position.y = running && !reduce ? Math.abs(Math.sin(s.walk)) * 0.12 : 0;
+    // A rigged model (model.animated) brings its own run cycle, bob and lean
+    const procedural = !model.animated;
+    model.body.position.y = procedural && running && !reduce ? Math.abs(Math.sin(s.walk)) * 0.12 : 0;
     // Lean into the run
-    model.body.rotation.x = running ? Math.min(0.18, speed * 0.02) : 0;
+    model.body.rotation.x = procedural && running ? Math.min(0.18, speed * 0.02) : 0;
 
     // Squash on landing, stretch on take off, both spring back
     s.squash += (0 - s.squash) * Math.min(1, dt * 12);
@@ -218,22 +220,25 @@ export function createPlayer(scene, world, events, createModel = createPip) {
     const sxz = 1 / Math.sqrt(Math.max(0.5, sy));
     model.body.scale.set(sxz, sy, sxz);
 
-    const stride = running ? Math.sin(s.walk) * 0.25 : 0;
-    model.feet[0].position.z = 0.08 + stride;
-    model.feet[1].position.z = 0.08 - stride;
-    if (model.arms) {
-      // Arms swing against the legs; raised a little while airborne
-      const swing = running ? Math.sin(s.walk) * 0.7 : 0;
-      const air = s.onGround ? 0 : -0.5;
-      model.arms[0].rotation.x = -swing + air;
-      model.arms[1].rotation.x = swing + air;
-    }
-    const tuck = s.onGround ? 0 : 0.12;
-    model.feet[0].position.y = model.feet[1].position.y = 0.1 + tuck;
+    if (procedural) {
+      const stride = running ? Math.sin(s.walk) * 0.25 : 0;
+      model.feet[0].position.z = 0.08 + stride;
+      model.feet[1].position.z = 0.08 - stride;
+      if (model.arms) {
+        // Arms swing against the legs; raised a little while airborne
+        const swing = running ? Math.sin(s.walk) * 0.7 : 0;
+        const air = s.onGround ? 0 : -0.5;
+        model.arms[0].rotation.x = -swing + air;
+        model.arms[1].rotation.x = swing + air;
+      }
+      const tuck = s.onGround ? 0 : 0.12;
+      model.feet[0].position.y = model.feet[1].position.y = 0.1 + tuck;
+    } else model.update(dt, s);
 
     if (s.spin > 0) {
       const k = 1 - s.spin / P.spinTime;
-      model.body.rotation.y = k * Math.PI * 4;
+      // The rigged model's spin clip already turns it round
+      model.body.rotation.y = procedural ? k * Math.PI * 4 : 0;
       model.swirl.material.opacity = 0.6 * Math.sin(k * Math.PI);
       model.swirl.scale.setScalar(0.7 + k * 0.6);
       model.swirl.rotation.z = -k * 12;
