@@ -1,0 +1,50 @@
+// Tunables in one place. The debug panel (?debug) edits these live.
+
+export const PLAYER = {
+  radius: 0.4,
+  step: 0.35,            // highest ledge Pip walks up without jumping
+  runSpeed: 8,
+  accelGround: 55,
+  accelAir: 30,
+  decel: 48,
+  turnRate: 14,
+  jumpSpeed: 10.5,
+  gravity: 26,
+  fallGravityMul: 1.45,  // falling is faster than rising, feels less floaty
+  releaseGravityMul: 2.4, // let go of jump early for a short hop
+  maxFall: 30,
+  coyoteTime: 0.1,       // can still jump this long after leaving a ledge
+  jumpBuffer: 0.13,      // a jump pressed this early before landing still counts
+  spinTime: 0.45,
+  spinCooldown: 0.2,
+  spinReach: 1.6,
+  crateBounce: 8,
+  crateBounceHeld: 11.5,
+  springBounce: 14,
+  hurtInvulnerable: 1.3,
+  hurtKnock: 10,
+  hurtFruitLoss: 5,
+  killY: -8
+};
+
+export const CAMERA = {
+  height: 4.4,
+  distance: 8.2,
+  lookAhead: 4.5,
+  velocityLead: 0.18,
+  followX: 0.55,
+  follow: 6,
+  verticalFollow: 3.5
+};
+
+export const FEEL = {
+  hitStop: 0.045,
+  shakeDecay: 1.6
+};
+
+export const AUDIO = {
+  // Drop a file in public/audio/ and set this to use real music instead of the generated loop
+  musicUrl: null,
+  musicVolume: 0.5,
+  sfxVolume: 0.8
+};

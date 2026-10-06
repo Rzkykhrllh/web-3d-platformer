@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Island Portfolio</title>
+<meta name="description" content="A playable portfolio: run down a jungle path and break crates to see my work.">
+<meta property="og:title" content="Island Portfolio">
+<meta property="og:description" content="A playable portfolio: run down a jungle path and break crates to see my work.">
+<meta property="og:type" content="website">
+<!-- TODO: add og:image once there is a final screenshot (public/og-image.png, 1200x630) -->
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#167C96">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,15 +19,32 @@
 <body>
 <canvas id="scene" tabindex="-1" aria-label="A jungle path with crates to break. Each crate holds part of the portfolio."></canvas>
 
+<!-- Static copy of the portfolio for search engines and readers without WebGL; filled at build time -->
+<noscript><main class="static" id="static"></main></noscript>
+
+<div class="screen" id="loading" role="status">
+  <div class="loader">
+    <div class="crate-spin" aria-hidden="true"></div>
+    <p id="loadText">Loading the island…</p>
+    <div class="bar"><span id="loadBar"></span></div>
+  </div>
+</div>
+
 <div class="hud" id="hud" aria-live="polite">
   <span class="stat"><span class="icon fruit" aria-hidden="true"></span><span id="fruitCount">0</span><span class="sr">fruit</span></span>
   <span class="stat"><span class="icon crate" aria-hidden="true"></span><span id="crateCount">0 / 0</span><span class="sr">crates</span></span>
 </div>
-<button class="all" id="allBtn">See everything</button>
+<div class="corner" id="corner">
+  <button class="pill" id="allBtn">See everything</button>
+  <button class="pill round" id="muteBtn" aria-label="Mute" aria-pressed="false">♪</button>
+  <button class="pill round" id="pauseBtn" aria-label="Pause">II</button>
+</div>
+
+<div class="toast" id="toast" aria-live="polite"></div>
 
 <div class="hint" id="hint">
-  <span class="keys">Run with WASD or arrows. Space to jump, Shift or K to spin. Break crates to open my work.</span>
-  <span class="taps">Stick to run, buttons to jump and spin. Break crates to open my work.</span>
+  <span class="keys">Run with WASD or arrows. Space to jump, Shift or K to spin. Esc to pause.</span>
+  <span class="taps">Stick to run, buttons to jump and spin.</span>
 </div>
 
 <aside class="card" id="card" aria-live="polite" inert>
@@ -36,14 +60,67 @@
 
 <div class="fade" id="fade"></div>
 
-<div class="sign" id="startSign">
+<!-- Title screen over the fly-through -->
+<div class="screen menu hidden" id="menu" inert>
+  <div class="title">
+    <p class="eyebrow" id="menuRole"></p>
+    <h1 id="menuTitle">Island</h1>
+    <p class="tag">Smash crates. Find my work. Watch out for TNT.</p>
+  </div>
+  <nav class="menu-actions">
+    <button class="big" id="playBtn">Play</button>
+    <button id="skipBtn">Just show me the portfolio</button>
+    <button id="menuSettingsBtn">Settings</button>
+  </nav>
+</div>
+
+<div class="sign hidden" id="pause" role="dialog" aria-labelledby="pauseTitle" inert>
   <div class="board">
-    <h1 id="startTitle">Island</h1>
-    <p class="role" id="startRole"></p>
-    <p>Run down the jungle path and smash the crates. Each one holds a piece of my work. Watch out for TNT.</p>
-    <div class="actions">
-      <button id="startBtn">Start running</button>
-      <button id="skipBtn" class="plain">Just show me the portfolio</button>
+    <h2 id="pauseTitle" tabindex="-1">Paused</h2>
+    <div class="stack">
+      <button id="resumeBtn">Resume</button>
+      <button class="plain" id="pauseAllBtn">See everything</button>
+      <button class="plain" id="pauseSettingsBtn">Settings</button>
+      <button class="plain" id="restartBtn">Restart</button>
+    </div>
+    <dl class="controls">
+      <dt>Run</dt><dd>WASD / arrows</dd>
+      <dt>Jump</dt><dd>Space (hold for higher)</dd>
+      <dt>Spin</dt><dd>Shift / K / X</dd>
+      <dt>Pause</dt><dd>Esc / P</dd>
+    </dl>
+  </div>
+</div>
+
+<div class="sign hidden" id="settings" role="dialog" aria-labelledby="settingsTitle" inert>
+  <div class="board">
+    <h2 id="settingsTitle" tabindex="-1">Settings</h2>
+    <form class="form" id="settingsForm">
+      <label>Music <input type="range" id="setMusic" min="0" max="1" step="0.05"></label>
+      <label>Sound effects <input type="range" id="setSfx" min="0" max="1" step="0.05"></label>
+      <label>Graphics
+        <select id="setQuality">
+          <option value="auto">Auto</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="setShake"> Screen shake</label>
+    </form>
+    <div class="stack"><button id="settingsBack">Done</button></div>
+  </div>
+</div>
+
+<div class="sign hidden" id="finish" role="dialog" aria-labelledby="finishTitle" inert>
+  <div class="board">
+    <div class="medal" id="medal" aria-hidden="true"></div>
+    <h2 id="finishTitle" tabindex="-1">You made it!</h2>
+    <p class="rank" id="rankText"></p>
+    <dl class="results" id="results"></dl>
+    <div class="stack row">
+      <button id="finishAllBtn">See everything</button>
+      <button class="plain" id="againBtn">Play again</button>
     </div>
   </div>
 </div>
@@ -53,9 +130,9 @@
     <h2 id="summaryTitle" tabindex="-1">Everything on the island</h2>
     <p class="stats" id="summaryStats"></p>
     <ul class="list" id="summaryList"></ul>
-    <div class="actions">
-      <button id="backBtn">Back to the island</button>
-      <button id="againBtn" class="plain">Run it again</button>
+    <div class="stack row">
+      <button id="backBtn">Back</button>
+      <a class="plain button" href="portfolio.html" id="pageLink">Open as a page</a>
     </div>
   </div>
 </div>

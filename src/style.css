@@ -11,6 +11,7 @@
   --paper: #FFF8E6;
   --paper-ink: #3A2412;
   --muted: #7A5A3C;
+  --glass: rgba(43, 26, 15, .62);
   box-sizing: border-box;
 }
 @media (prefers-color-scheme: dark) {
@@ -30,6 +31,62 @@ body {
 canvas#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
 [hidden] { display: none !important; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+button { -webkit-tap-highlight-color: transparent; }
+
+/* Static fallback (no JS) */
+.static { position: relative; max-width: 760px; margin: 0 auto; padding: 32px 16px; color: var(--cream); user-select: text; overflow: auto; height: 100%; }
+
+/* Loading */
+.screen { position: fixed; inset: 0; display: grid; place-items: center; transition: opacity .6s; }
+.screen.hidden { opacity: 0; pointer-events: none; }
+#loading { background: radial-gradient(circle at 50% 40%, #2bb3cf, #0e5f74); z-index: 20; }
+.loader { text-align: center; width: min(320px, calc(100% - 32px)); }
+.loader p { font: 800 16px "Nunito", system-ui, sans-serif; margin: 18px 0 12px; }
+.bar { height: 10px; border-radius: 99px; background: rgba(0,0,0,.25); overflow: hidden; }
+.bar span { display: block; height: 100%; width: 0; background: var(--sun); border-radius: inherit; transition: width .2s; }
+.crate-spin {
+  width: 56px; height: 56px; margin: 0 auto;
+  background: var(--crate); border: 6px solid #E9B06A; border-radius: 6px;
+  box-shadow: inset 0 0 0 3px rgba(40,20,5,.6);
+  animation: crate 1.1s ease-in-out infinite;
+}
+@keyframes crate { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-14px) rotate(90deg); } }
+
+/* Title screen */
+.menu {
+  align-content: center; gap: 36px;
+  padding: 24px 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
+  background: linear-gradient(180deg, rgba(10,40,55,.0) 30%, rgba(10,30,40,.55) 100%);
+}
+.title { text-align: center; }
+.title .eyebrow { margin: 0 0 6px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; font-size: 14px; text-shadow: 0 2px 8px rgba(0,0,0,.5); }
+.title h1 {
+  margin: 0;
+  font: 400 clamp(52px, 13vw, 110px)/0.95 "Lilita One", "Arial Black", sans-serif;
+  color: var(--sun);
+  -webkit-text-stroke: 3px var(--wood-dark);
+  text-shadow: 0 6px 0 var(--wood-dark), 0 10px 30px rgba(0,0,0,.45);
+  animation: bob 3s ease-in-out infinite;
+}
+@keyframes bob { 50% { transform: translateY(-6px) rotate(-1deg); } }
+.title .tag { margin: 14px 0 0; font-weight: 800; font-size: 17px; text-shadow: 0 2px 8px rgba(0,0,0,.6); }
+.menu-actions { display: grid; gap: 12px; justify-items: center; }
+.menu-actions button {
+  font: 800 16px "Nunito", system-ui, sans-serif;
+  color: var(--cream); background: var(--glass);
+  border: 2px solid rgba(255,243,209,.5); border-radius: 999px;
+  padding: 10px 22px; cursor: pointer; min-width: 240px;
+  transition: transform .12s, background .12s;
+}
+.menu-actions button:hover { background: rgba(43,26,15,.85); transform: translateY(-1px); }
+.menu-actions button.big {
+  font: 400 30px "Lilita One", "Arial Black", sans-serif;
+  color: var(--ink); background: var(--sun);
+  border: 0; border-bottom: 6px solid var(--sun-dark); border-radius: 16px;
+  padding: 12px 56px;
+}
+.menu-actions button.big:hover { background: #FFD663; }
+.menu-actions button:focus-visible { outline: 3px solid var(--cream); outline-offset: 4px; }
 
 /* HUD */
 .hud {
@@ -48,6 +105,7 @@ canvas#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
   border-radius: 12px;
   font-family: "Lilita One", "Arial Black", sans-serif;
   font-size: 22px; letter-spacing: .5px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
 }
 .stat.pop { animation: pop .3s ease-out; }
 @keyframes pop { 40% { transform: scale(1.15); } 100% { transform: scale(1); } }
@@ -55,20 +113,35 @@ canvas#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
 .icon.fruit { background: var(--fruit); border-radius: 50% 50% 45% 45%; box-shadow: inset -3px -3px 0 rgba(0,0,0,.18); }
 .icon.crate { background: var(--crate); border: 3px solid #E9B06A; border-radius: 3px; }
 
-.all {
+.corner {
   position: fixed;
   top: calc(env(safe-area-inset-top, 0px) + 16px);
   right: calc(env(safe-area-inset-right, 0px) + 16px);
-  font: 800 15px "Nunito", system-ui, sans-serif;
-  color: var(--cream);
-  background: rgba(43, 26, 15, .6);
-  border: 2px solid rgba(255, 243, 209, .5);
-  border-radius: 999px;
-  padding: 8px 16px;
-  cursor: pointer;
+  display: flex; gap: 8px;
+  opacity: 0; transition: opacity .4s; pointer-events: none;
 }
-.all:hover { background: rgba(43, 26, 15, .8); }
-.all:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+.corner.show { opacity: 1; pointer-events: auto; }
+.pill {
+  font: 800 15px "Nunito", system-ui, sans-serif;
+  color: var(--cream); background: var(--glass);
+  border: 2px solid rgba(255, 243, 209, .5);
+  border-radius: 999px; padding: 8px 16px; cursor: pointer;
+}
+.pill.round { width: 40px; height: 40px; padding: 0; display: grid; place-items: center; }
+.pill.off { opacity: .55; text-decoration: line-through; }
+.pill:hover { background: rgba(43, 26, 15, .85); }
+.pill:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+
+.toast {
+  position: fixed; top: 22%; left: 50%;
+  transform: translate(-50%, 0) scale(.8);
+  font: 400 clamp(28px, 6vw, 44px) "Lilita One", "Arial Black", sans-serif;
+  color: var(--sun); -webkit-text-stroke: 2px var(--wood-dark);
+  text-shadow: 0 4px 0 var(--wood-dark);
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s, transform .25s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
 
 .hint {
   position: fixed;
@@ -76,7 +149,7 @@ canvas#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
   left: 50%; transform: translateX(-50%);
   width: max-content; max-width: calc(100% - 32px);
   padding: 8px 14px; border-radius: 10px;
-  background: rgba(43, 26, 15, .6);
+  background: var(--glass);
   font-size: 14px; text-align: center;
   opacity: 0; transition: opacity .4s;
   pointer-events: none;
@@ -116,17 +189,13 @@ canvas#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
   letter-spacing: .08em; text-transform: uppercase;
   color: var(--muted);
 }
-.card h3, .list h3 {
+.card h3, .list h3, .static h3 {
   margin: 2px 0 8px;
   font: 400 24px/1.15 "Lilita One", "Arial Black", sans-serif;
 }
 .card p, .list p { margin: 0 0 10px; font-size: 15px; line-height: 1.5; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
-.tags li {
-  padding: 2px 10px; border-radius: 999px;
-  background: rgba(184, 116, 47, .16);
-  font-size: 13px; font-weight: 800;
-}
+.tags li { padding: 2px 10px; border-radius: 999px; background: rgba(184, 116, 47, .16); font-size: 13px; font-weight: 800; }
 .links { display: flex; flex-wrap: wrap; gap: 8px; }
 .links a {
   padding: 6px 12px; border-radius: 8px;
@@ -135,18 +204,19 @@ canvas#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
 }
 .links a:hover { background: #FFD663; }
 
-/* Signs */
+/* Signs (pause, settings, finish, summary) */
 .sign {
   position: fixed; inset: 0;
   display: grid; place-items: center;
   padding: 24px 16px;
-  background: rgba(22, 50, 60, .25);
-  transition: opacity .4s;
+  background: rgba(12, 36, 46, .45);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  transition: opacity .3s;
   overflow-y: auto;
 }
 .sign.hidden { opacity: 0; pointer-events: none; }
 .board {
-  width: min(480px, 100%);
+  width: min(440px, 100%);
   padding: 28px 26px 24px;
   text-align: center;
   background:
@@ -156,40 +226,54 @@ canvas#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
   border-bottom: 8px solid var(--wood-dark);
   box-shadow: 0 18px 40px rgba(0,0,0,.35);
 }
-#startSign .board { transform: rotate(-1.5deg); }
-.board h1, .board h2 {
-  margin: 0 0 6px;
-  font-family: "Lilita One", "Arial Black", sans-serif;
-  font-weight: 400; line-height: 1;
+.board h2 {
+  margin: 0 0 14px;
+  font: 400 clamp(34px, 8vw, 48px)/1 "Lilita One", "Arial Black", sans-serif;
   color: var(--sun);
   text-shadow: 0 4px 0 var(--wood-dark), 0 0 24px rgba(255,201,60,.35);
   outline: none;
 }
-.board h1 { font-size: clamp(40px, 10vw, 62px); }
-.board h2 { font-size: clamp(32px, 8vw, 46px); }
-.board .role { font-weight: 800; font-size: 18px; margin: 0 0 14px; }
-.board p { margin: 0 auto 20px; max-width: 36ch; font-size: 16px; line-height: 1.5; }
-.board .stats { margin-bottom: 16px; font-weight: 800; }
-.actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
-.board button {
+.board p { margin: 0 auto 16px; max-width: 36ch; font-size: 16px; line-height: 1.5; }
+.board .stats { font-weight: 800; }
+.stack { display: grid; gap: 10px; justify-items: center; margin-top: 8px; }
+.stack.row { grid-auto-flow: column; justify-content: center; }
+.board button, .board .button {
   font: 400 21px "Lilita One", "Arial Black", sans-serif;
-  color: var(--ink);
-  background: var(--sun);
-  border: 0; border-bottom: 5px solid var(--sun-dark);
-  border-radius: 12px;
-  padding: 12px 26px;
-  cursor: pointer;
+  color: var(--ink); background: var(--sun);
+  border: 0; border-bottom: 5px solid var(--sun-dark); border-radius: 12px;
+  padding: 11px 26px; min-width: 200px;
+  cursor: pointer; text-decoration: none; display: inline-block;
   transition: transform .12s;
 }
-.board button:hover { transform: translateY(-2px); }
+.board button:hover, .board .button:hover { transform: translateY(-2px); }
 .board button:active { transform: translateY(2px); border-bottom-width: 2px; }
-.board button.plain {
+.board .plain {
   background: transparent; color: var(--cream);
   border: 2px solid rgba(255, 243, 209, .55);
   font: 800 16px "Nunito", system-ui, sans-serif;
   padding: 10px 18px;
 }
-.board button:focus-visible { outline: 3px solid var(--cream); outline-offset: 4px; }
+.stack.row button, .stack.row .button { min-width: 0; }
+.board button:focus-visible, .board .button:focus-visible, .board input:focus-visible, .board select:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+
+.controls, .results { display: grid; grid-template-columns: auto auto; gap: 6px 16px; justify-content: center; margin: 20px 0 0; font-size: 14px; text-align: left; }
+.controls dt, .results dt { font-weight: 800; opacity: .8; }
+.controls dd, .results dd { margin: 0; }
+.results { font-size: 17px; margin: 4px 0 18px; }
+.results dd { font-family: "Lilita One", "Arial Black", sans-serif; letter-spacing: .5px; }
+
+.form { display: grid; gap: 14px; margin: 0 0 16px; text-align: left; font-weight: 800; }
+.form label { display: grid; gap: 6px; }
+.form label.check { display: flex; align-items: center; gap: 10px; }
+.form input[type=range] { width: 100%; accent-color: var(--sun); }
+.form input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--sun); }
+.form select { font: 800 15px "Nunito", system-ui, sans-serif; padding: 8px; border-radius: 8px; border: 0; background: var(--paper); color: var(--paper-ink); }
+
+.medal { width: 84px; height: 84px; margin: -64px auto 10px; border-radius: 50%; border: 6px solid rgba(0,0,0,.2); box-shadow: 0 8px 20px rgba(0,0,0,.35), inset 0 -8px 0 rgba(0,0,0,.15); }
+.medal.gold { background: radial-gradient(circle at 35% 30%, #fff3a8, #f2b630 60%, #b8800f); }
+.medal.silver { background: radial-gradient(circle at 35% 30%, #ffffff, #c4ccd4 60%, #7f8a94); }
+.medal.bronze { background: radial-gradient(circle at 35% 30%, #ffd9b0, #c77b3a 60%, #8a4f1f); }
+.rank { font-weight: 800; }
 
 .board.wide { width: min(760px, 100%); max-height: calc(100dvh - 48px); display: flex; flex-direction: column; }
 .list {
@@ -225,8 +309,13 @@ canvas#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
   .card h3 { font-size: 21px; }
   .card p { font-size: 14px; }
   .hint { bottom: calc(env(safe-area-inset-bottom, 0px) + 196px); }
+  .controls { display: none; }
 }
 @media (pointer: fine) { .hint .taps { display: none; } }
+@media (max-width: 520px) {
+  #allBtn { display: none; }
+  .stat { font-size: 18px; padding: 4px 10px 4px 6px; }
+}
 .stick {
   position: fixed;
   left: calc(env(safe-area-inset-left, 0px) + 24px);
@@ -235,11 +324,7 @@ canvas#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
   background: rgba(43, 26, 15, .35);
   border: 3px solid rgba(255, 243, 209, .5);
 }
-.knob {
-  position: absolute; left: 32px; top: 32px;
-  width: 50px; height: 50px; border-radius: 50%;
-  background: var(--cream);
-}
+.knob { position: absolute; left: 32px; top: 32px; width: 50px; height: 50px; border-radius: 50%; background: var(--cream); }
 .pad {
   position: fixed;
   width: 80px; height: 80px; border-radius: 50%;
@@ -247,9 +332,10 @@ canvas#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
   background: var(--sun); color: var(--ink);
   font: 400 18px "Lilita One", "Arial Black", sans-serif;
 }
+.pad:active { transform: translateY(3px); border-bottom-width: 2px; }
 .pad.jump { right: calc(env(safe-area-inset-right, 0px) + 24px); bottom: calc(env(safe-area-inset-bottom, 0px) + 60px); }
 .pad.spin { right: calc(env(safe-area-inset-right, 0px) + 116px); bottom: calc(env(safe-area-inset-bottom, 0px) + 36px); background: var(--fruit); border-bottom-color: #B84E14; }
 
 @media (prefers-reduced-motion: reduce) {
-  .card.show, .stat.pop { animation: none; }
+  .card.show, .stat.pop, .title h1, .crate-spin { animation: none; }
 }

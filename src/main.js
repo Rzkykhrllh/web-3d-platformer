@@ -1,371 +1,519 @@
 import * as THREE from 'three';
 import './style.css';
-import { mat } from './util.js';
-import { createPip } from './pip.js';
-import { createCrateFactory, TNT_RADIUS } from './crates.js';
-import {
-  buildLevel, surfaces, crateSpots, fruitSpots, gemPosition, checkpoints,
-  pathTop, PATH_HALF_WIDTH, Z_START, Z_END
-} from './level.js';
+import { PLAYER, FEEL } from './config.js';
+import { seededRandom, mat } from './util.js';
+import { createWorld } from './world.js';
+import { createPlayer } from './player.js';
+import { createCameraRig } from './camera.js';
+import { createParticles } from './particles.js';
+import { createAudio } from './audio.js';
+import { createCrateFactory, TNT_RADIUS, BOUNCE_HITS } from './crates.js';
+import { createEnemies } from './enemies.js';
+import { createPlatforms } from './platforms.js';
+import * as L from './level.js';
+import { buildScenery } from './scenery.js';
+import { createTextures } from './render/textures.js';
+import { createSky, SUN_DIR } from './render/sky.js';
+import { createWater } from './render/water.js';
+import { wind } from './render/foliage.js';
+import { createPost } from './render/post.js';
+import { TIERS, guessTier, createFpsWatch } from './quality.js';
 import { createUI } from './ui.js';
 
-// Renderer and scene
+// Yield so the loading bar can paint; the timeout keeps loading going in a background tab
+const nextFrame = () => new Promise(r => { requestAnimationFrame(() => r()); setTimeout(r, 60); });
+const AUTOPLAY_KEY = 'island-autoplay';
+
+// Renderer
 const canvas = document.getElementById('scene');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-const SKY = 0x7fd3f0;
-scene.background = new THREE.Color(SKY);
-scene.fog = new THREE.Fog(SKY, 45, 170);
+const FOG = 0xbfeaf5;
+scene.fog = new THREE.Fog(FOG, 55, 210);
+const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 900);
 
-const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 500);
-
-scene.add(new THREE.HemisphereLight(0xfff1c9, 0x3d7a4a, 2.1));
-const sun = new THREE.DirectionalLight(0xfff0d0, 2.8);
+const hemi = new THREE.HemisphereLight(0xdff4ff, 0x4a7a3a, 1.1);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff0d0, 3.2);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 90 });
-sun.shadow.bias = -0.0008;
+Object.assign(sun.shadow.camera, { left: -24, right: 24, top: 24, bottom: -24, near: 1, far: 100 });
+sun.shadow.bias = -0.0005;
+sun.shadow.normalBias = 0.03;
 scene.add(sun, sun.target);
 
-const { palms, lava } = buildLevel(scene);
+const audio = createAudio();
+const world = createWorld();
+const particles = createParticles(scene);
+const fx = particles.fx;
 
-// Crates
-const factory = createCrateFactory(scene);
-const crates = crateSpots.map(s => factory.make(s, s.base ?? pathTop(s.z)));
-
-// Fruit
-const fruitGeo = new THREE.SphereGeometry(0.28, 10, 8);
-const fruitMat = mat(0xff7a2f, { roughness: 0.4, emissive: 0x7a2a00, emissiveIntensity: 0.35 });
-const fruitLeafGeo = new THREE.ConeGeometry(0.1, 0.22, 5);
-const fruitLeafMat = mat(0x3bb36a);
-const fruits = fruitSpots().map((pos, i) => {
-  const g = new THREE.Group();
-  const ball = new THREE.Mesh(fruitGeo, fruitMat);
-  ball.scale.set(1, 0.85, 1);
-  ball.castShadow = true;
-  const leaf = new THREE.Mesh(fruitLeafGeo, fruitLeafMat);
-  leaf.position.y = 0.3;
-  g.add(ball, leaf);
-  g.position.copy(pos);
-  g.userData = { base: pos.clone(), phase: i * 0.7, taken: false, pop: 0 };
-  scene.add(g);
-  return g;
-});
-
-// Gem at the end
-const gem = new THREE.Mesh(
-  new THREE.OctahedronGeometry(0.7, 0),
-  mat(0x7fd3ff, { emissive: 0x2a7bff, emissiveIntensity: 0.7, roughness: 0.2, metalness: 0.2 })
-);
-gem.castShadow = true;
-gem.position.copy(gemPosition);
-scene.add(gem);
-
-// Player
-const pip = createPip();
-scene.add(pip.root);
-
-const STEP = 0.35, RADIUS = 0.4, SPEED = 7.5, JUMP = 10, GRAVITY = 25;
-const SPIN_TIME = 0.45, SPIN_COOLDOWN = 0.2, SPIN_REACH = 1.6;
-
+// Game state
 const state = {
-  started: false, paused: false, done: false,
-  pos: checkpoints[0].clone(), vy: 0, onGround: true,
-  facing: Math.PI, walk: 0,
-  spin: 0, spinCooldown: 0,
-  knock: new THREE.Vector2(),
-  checkpoint: 0, shake: 0,
-  fruit: 0, cratesBroken: 0, opened: new Set(), startTime: 0
+  started: false, done: false,
+  fruit: 0, cratesBroken: 0, crateTotal: 0,
+  checkpoint: L.checkpoints[0].clone(), startTime: 0,
+  hitStop: 0, simTime: 0, lastStep: 0
 };
+
+let settings, tierName, tier, post, rig, player, factory, enemies, platforms, scenery, sky, water, fruits, gem;
+const ghosts = [];
+
+const ui = createUI({
+  onPlay: startGame,
+  onPause: () => clearInput(),
+  onRestart: () => { try { sessionStorage.setItem(AUTOPLAY_KEY, '1'); } catch { /* ignore */ } location.reload(); },
+  onJump: () => { input.jumpQueued = true; },
+  onSpin: () => { input.spinQueued = true; },
+  onSettings: s => applySettings(s),
+  onSound: name => audio.play(name),
+  onUnlock: () => audio.unlock()
+});
+settings = ui.settings;
 
 // Input
 const keys = {};
-let jumpQueued = false, spinQueued = false;
+const input = { jumpQueued: false, spinQueued: false };
+function clearInput() { for (const k in keys) keys[k] = false; input.jumpQueued = input.spinQueued = false; }
 window.addEventListener('keydown', e => {
-  if (e.target.closest?.('button, a')) return;
+  if (e.target.closest?.('button, a, input, select')) return;
   keys[e.code] = true;
-  if (e.code === 'Space' && !e.repeat) jumpQueued = true;
-  if (['ShiftLeft', 'ShiftRight', 'KeyK', 'KeyX'].includes(e.code) && !e.repeat) spinQueued = true;
+  if (e.code === 'Space' && !e.repeat) input.jumpQueued = true;
+  if (['ShiftLeft', 'ShiftRight', 'KeyK', 'KeyX'].includes(e.code) && !e.repeat) input.spinQueued = true;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
-window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+window.addEventListener('blur', clearInput);
+document.addEventListener('visibilitychange', () => audio.pause(document.hidden));
 
-const ui = createUI({
-  onStart: () => { state.started = true; state.startTime = performance.now(); },
-  onPause: paused => { state.paused = paused; for (const k in keys) keys[k] = false; },
-  onJump: () => { jumpQueued = true; },
-  onSpin: () => { spinQueued = true; },
-  onRestart: () => location.reload()
-});
-
-// Collision helpers
-const overlapsBox = (x, z, r, s) => x + r > s.x0 && x - r < s.x1 && z + r > s.z0 && z - r < s.z1;
-
-function blocked(x, z, y) {
-  for (const s of surfaces) {
-    if (s.top > y + STEP && overlapsBox(x, z, RADIUS, s)) return true;
-  }
-  for (const c of crates) {
-    if (c.broken || y >= c.top - 0.3 || y + 1.4 <= c.base) continue;
-    if (Math.abs(x - c.x) < 0.5 + RADIUS && Math.abs(z - c.z) < 0.5 + RADIUS) return true;
-  }
-  return false;
+function readInput() {
+  let x = ui.joy.x, z = ui.joy.y;
+  if (keys.KeyA || keys.ArrowLeft) x -= 1;
+  if (keys.KeyD || keys.ArrowRight) x += 1;
+  if (keys.KeyW || keys.ArrowUp) z -= 1;
+  if (keys.KeyS || keys.ArrowDown) z += 1;
+  const out = {
+    x, z,
+    jumpPressed: input.jumpQueued,
+    jumpHeld: !!(keys.Space || ui.touchButtons.jump),
+    spinPressed: input.spinQueued
+  };
+  input.jumpQueued = input.spinQueued = false;
+  return out;
 }
 
-// Highest surface under (x, z) that Pip could be standing on, coming from fromY
-function groundAt(x, z, fromY) {
-  let g = -Infinity;
-  for (const s of surfaces) {
-    if (s.top <= fromY + STEP && overlapsBox(x, z, 0, s)) g = Math.max(g, s.top);
-  }
-  return g;
+// Quality
+function resolveTier(s) { return s.quality === 'auto' ? (tierName || guessTier()) : s.quality; }
+function applyTier(name) {
+  tierName = name; tier = TIERS[name];
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier.pixelRatio));
+  sun.castShadow = tier.shadows;
+  sun.shadow.mapSize.set(tier.shadowMap, tier.shadowMap);
+  sun.shadow.map?.dispose(); sun.shadow.map = null;
+  post?.setEnabled(tier.post);
+  if (scenery?.grass) scenery.grass.visible = tier.grass > 0;
+  resize();
 }
+function applySettings(s) {
+  audio.setVolumes({ sfx: s.sfx, music: s.music });
+  audio.setMuted(s.muted);
+  const want = resolveTier(s);
+  if (want !== tierName) applyTier(want);
+  fpsWatch.enabled = s.quality === 'auto';
+}
+const fpsWatch = createFpsWatch(() => tierName, name => { applyTier(name); });
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  post?.setSize(w, h, renderer.getPixelRatio());
+  camera.aspect = w / h;
+  camera.fov = w / h < 0.8 ? 72 : 58;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+// Building the level, in steps so the loading bar moves
+async function load() {
+  tierName = resolveTier(settings);
+  tier = TIERS[tierName];
+  applyTier(tierName);
+  const rand = seededRandom(11);
+
+  ui.setLoading(0.05, 'Carving crates…');
+  await Promise.race([document.fonts?.load('400 100px "Lilita One"'), new Promise(r => setTimeout(r, 1500))]).catch(() => {});
+  await nextFrame();
+  const textures = createTextures(256);
+  ui.setLoading(0.25, 'Painting the sky…');
+  await nextFrame();
+  sky = createSky(scene, renderer, rand);
+  water = createWater(scene, { segments: tierName === 'low' ? 80 : 160 });
+  ui.setLoading(0.4, 'Planting palms…');
+  await nextFrame();
+  scenery = buildScenery(scene, { textures, quality: tier, rand });
+  for (const s of L.surfaces) world.addSurface({ ...s });
+  ui.setLoading(0.65, 'Hiding fruit…');
+  await nextFrame();
+  buildEntities();
+  post = createPost(renderer, scene, camera);
+  applyTier(tierName);
+  applySettings(settings);
+  ui.setLoading(0.85, 'Warming up shaders…');
+  await nextFrame();
+  rig.update(0.016, player.state, true);
+  try { await renderer.compileAsync(scene, camera); } catch { /* older drivers: compile on first frame */ }
+  ui.setLoading(1, 'Ready');
+  await nextFrame();
+
+  let autoplay = false;
+  try { autoplay = sessionStorage.getItem(AUTOPLAY_KEY) === '1'; sessionStorage.removeItem(AUTOPLAY_KEY); } catch { /* ignore */ }
+  ui.ready();
+  if (autoplay) document.getElementById('playBtn').click();
+}
+
+function buildEntities() {
+  factory = createCrateFactory(scene, world, fx);
+  for (const s of L.crateSpots) {
+    const c = factory.make(s, s.base ?? L.pathTop(s.z));
+    if (c.ghost) ghosts.push(c);
+  }
+  state.crateTotal = world.crates.filter(c => c.counted).length;
+  ui.setCrates(0, state.crateTotal);
+
+  platforms = createPlatforms(scene, world, null, {
+    crumble: () => audio.play('land', 0.3),
+    crumbleFall: pos => fx.dust(pos, 6, 0x9c8a74)
+  });
+
+  enemies = createEnemies(scene);
+  L.enemySpots.forEach(e => enemies.add(e));
+
+  // Fruit
+  const fruitGeo = new THREE.SphereGeometry(0.28, 16, 12);
+  const fruitMat = new THREE.MeshStandardMaterial({ color: 0xff7a2f, roughness: 0.35, emissive: 0xff4a00, emissiveIntensity: 0.35 });
+  const leafGeo = new THREE.ConeGeometry(0.1, 0.24, 6);
+  const leafMat = mat(0x3bb36a, { flatShading: false });
+  fruits = L.fruitSpots().map((pos, i) => {
+    const g = new THREE.Group();
+    const ball = new THREE.Mesh(fruitGeo, fruitMat);
+    ball.scale.set(1, 0.85, 1);
+    ball.castShadow = true;
+    const leaf = new THREE.Mesh(leafGeo, leafMat);
+    leaf.position.y = 0.3; leaf.rotation.z = 0.3;
+    g.add(ball, leaf);
+    g.position.copy(pos);
+    g.userData = { base: pos.clone(), phase: i * 0.7, taken: false, pop: 0 };
+    scene.add(g);
+    return g;
+  });
+
+  // Gem
+  gem = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.7, 0),
+    new THREE.MeshStandardMaterial({ color: 0x7fd3ff, emissive: 0x3a8bff, emissiveIntensity: 2.2, roughness: 0.1, metalness: 0.3 })
+  );
+  gem.castShadow = true;
+  gem.position.copy(L.gemPosition);
+  scene.add(gem);
+
+  player = createPlayer(scene, world, playerEvents);
+  player.reset(state.checkpoint);
+  rig = createCameraRig(camera, L.path);
+}
+
+// Player events
+const playerEvents = {
+  clamp(p) {
+    p.x = THREE.MathUtils.clamp(p.x, -L.PATH_HALF_WIDTH, L.PATH_HALF_WIDTH);
+    p.z = THREE.MathUtils.clamp(p.z, L.Z_END, L.Z_START);
+  },
+  jump(p) { audio.play('jump'); fx.dust(p, 3); },
+  land(p, impact) {
+    if (impact > 5) { fx.landRing(p, Math.min(1, impact / 20), dustColor(p)); audio.play('land', Math.min(1, impact / 20)); }
+    if (impact > 16) shake(0.15);
+  },
+  stomp(c) { hitCrate(c, 'stomp'); },
+  spinStart() { audio.play('spin'); },
+  spinning(p) {
+    if (Math.random() < 0.6) fx.spinTrail(p);
+    for (const c of world.crates) {
+      if (!c.solid || c.broken) continue;
+      if (Math.hypot(p.x - c.x, p.z - c.z) < PLAYER.spinReach && Math.abs(p.y + 0.7 - (c.base + 0.5)) < 1.3) hitCrate(c, 'spin');
+    }
+    for (const e of enemies.list) {
+      if (e.alive && e.root.position.distanceTo(p) < PLAYER.spinReach + 0.3) defeatEnemy(e);
+    }
+  },
+  fell() { respawn(); },
+  reduceMotion: () => !settings.shake
+};
+
+const dustColor = p => (p.z < -100 ? 0xb59470 : 0xe8cf9a);
+const panOf = x => THREE.MathUtils.clamp((x - camera.position.x) / 8, -1, 1);
+function shake(a) { if (settings.shake) rig.shake(a); }
+function vibrate(ms) { if (settings.shake) navigator.vibrate?.(ms); }
 
 // Crates
-function onCrateGone(c) {
-  state.cratesBroken++;
-  ui.setCrates(state.cratesBroken, crates.length);
-  if (c.content) {
-    state.opened.add(c.content);
-    ui.showCard(c.content);
+function hitCrate(c, how) {
+  if (c.ghost || c.broken) return;
+  const held = !!(keys.Space || ui.touchButtons.jump);
+  switch (c.type) {
+    case 'tnt':
+      if (how === 'stomp') { if (factory.lightFuse(c)) audio.play('tick'); player.bounce(PLAYER.crateBounce); }
+      else explodeTnt(c);
+      return;
+    case 'bounce':
+      if (how === 'stomp') {
+        c.hits++;
+        factory.poke(c);
+        addFruit(1, c.group.position);
+        audio.play('bounce');
+        player.bounce(held ? PLAYER.springBounce : PLAYER.springBounce * 0.85);
+        if (c.hits >= BOUNCE_HITS) breakCrate(c);
+      } else breakCrate(c);
+      return;
+    case 'activator':
+      factory.poke(c);
+      if (!c.activated) {
+        c.activated = true;
+        audio.play('activate');
+        ghosts.forEach(g => factory.materialize(g));
+        ui.toast('Crates appeared!');
+      } else audio.play('metal');
+      if (how === 'stomp') player.bounce(PLAYER.crateBounce);
+      return;
+    case 'checkpoint':
+      breakCrate(c);
+      state.checkpoint.set(c.x, c.base, c.z);
+      audio.play('checkpoint');
+      ui.toast('Checkpoint!');
+      break;
+    default:
+      breakCrate(c);
   }
+  if (how === 'stomp') player.bounce(held ? PLAYER.crateBounceHeld : PLAYER.crateBounce);
 }
 
 function breakCrate(c) {
+  if (c.broken) return;
   factory.smash(c);
-  onCrateGone(c);
+  audio.play('crate', panOf(c.x));
+  state.hitStop = FEEL.hitStop;
+  countCrate(c);
+}
+
+function countCrate(c) {
+  if (!c.counted) return;
+  state.cratesBroken++;
+  ui.setCrates(state.cratesBroken, state.crateTotal);
+  if (c.content) ui.showCard(c.content);
+  if (state.cratesBroken === state.crateTotal) ui.toast('All crates!');
 }
 
 function explodeTnt(c) {
   if (c.broken) return;
   factory.explode(c);
-  onCrateGone(c);
-  if (!ui.reduceMotion) state.shake = 0.45;
-  // Knock Pip back if caught in the blast
-  const dx = state.pos.x - c.x, dz = state.pos.z - c.z, d = Math.hypot(dx, dz);
-  if (d < TNT_RADIUS && Math.abs(state.pos.y - c.base) < 2.5) {
-    const k = (1 - d / TNT_RADIUS) * 14 + 4;
-    state.knock.set(dx / (d || 1), dz / (d || 1)).multiplyScalar(k);
-    state.vy = 9; state.onGround = false;
+  countCrate(c);
+  audio.play('boom', panOf(c.x));
+  shake(0.7);
+  vibrate(150);
+  state.hitStop = FEEL.hitStop * 2;
+  const p = player.state.pos;
+  const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz);
+  if (d < TNT_RADIUS && Math.abs(p.y - c.base) < 2.5) {
+    const k = (1 - d / TNT_RADIUS) * 12 + 4;
+    player.knock(dx / (d || 1), dz / (d || 1), k, 9);
+    if (player.hurt(c.x, c.z)) loseFruit();
   }
-  // Chain reaction for crates close by
-  crates.forEach(o => {
-    if (o.broken) return;
+  for (const o of world.crates) {
+    if (o.broken || o.ghost || o === c) continue;
     if (Math.hypot(o.x - c.x, o.z - c.z) < TNT_RADIUS * 0.6 && Math.abs(o.base - c.base) < 1.5) {
-      o.type === 'tnt' ? explodeTnt(o) : breakCrate(o);
+      if (o.type === 'tnt') explodeTnt(o);
+      else if (o.type !== 'activator') breakCrate(o);
     }
-  });
+  }
+  for (const e of enemies.list) if (e.alive && e.root.position.distanceTo(c.group.position) < TNT_RADIUS) defeatEnemy(e);
 }
 
-function hitCrate(c, bySpin) {
-  if (c.type !== 'tnt') breakCrate(c);
-  else if (bySpin) explodeTnt(c);
-  else factory.lightFuse(c);
+// Enemies
+function defeatEnemy(e) {
+  const p = player.state.pos;
+  const dx = e.root.position.x - p.x, dz = e.root.position.z - p.z, d = Math.hypot(dx, dz) || 1;
+  enemies.defeat(e, dx / d, dz / d);
+  fx.stars(e.root.position.clone().add(new THREE.Vector3(0, 0.6, 0)));
+  audio.play('defeat');
+  state.hitStop = FEEL.hitStop;
+}
+
+function checkEnemies() {
+  const s = player.state, p = s.pos;
+  for (const e of enemies.list) {
+    if (!e.alive) continue;
+    const ep = e.root.position;
+    const d = Math.hypot(p.x - ep.x, p.z - ep.z);
+    if (d > 0.95 || p.y > e.y + 1.1 || p.y + 1.4 < e.y) continue;
+    if (s.vel.y < 0 && p.y > e.y + 0.35) {
+      defeatEnemy(e);
+      player.bounce(keys.Space ? PLAYER.crateBounceHeld : PLAYER.crateBounce);
+    } else if (s.spin > 0) {
+      defeatEnemy(e);
+    } else if (player.hurt(ep.x, ep.z)) {
+      loseFruit();
+    }
+  }
+}
+
+// Fruit
+function addFruit(n, from) {
+  state.fruit += n;
+  ui.setFruit(state.fruit);
+  audio.play('fruit');
+  fx.sparkle(from.clone ? from.clone() : from, 0xffb347, 6);
+}
+
+function loseFruit() {
+  audio.play('hurt');
+  shake(0.3);
+  vibrate(80);
+  const lost = Math.min(state.fruit, PLAYER.hurtFruitLoss);
+  if (lost) {
+    state.fruit -= lost;
+    ui.setFruit(state.fruit);
+    fx.sparkle(player.state.pos.clone().add(new THREE.Vector3(0, 1, 0)), 0xff7a2f, lost * 3);
+  }
+}
+
+function collectFruit() {
+  const p = player.state.pos;
+  const cx = p.x, cy = p.y + 0.8, cz = p.z;
+  for (const f of fruits) {
+    const u = f.userData;
+    if (u.taken) continue;
+    const dx = f.position.x - cx, dy = f.position.y - cy, dz = f.position.z - cz;
+    if (dx * dx + dy * dy + dz * dz > 1.25) continue;
+    u.taken = true;
+    addFruit(1, f.position);
+  }
+}
+
+// Flow
+function startGame() {
+  state.started = true;
+  state.startTime = performance.now();
+  rig.setMode('follow', player.state);
+  audio.unlock();
 }
 
 function respawn() {
-  state.pos.copy(checkpoints[state.checkpoint]);
-  state.vy = 0; state.knock.set(0, 0);
-  state.facing = Math.PI;
+  audio.play('fall');
+  player.reset(state.checkpoint);
   ui.flash();
 }
 
 function finish() {
+  if (state.done) return;
   state.done = true;
+  player.state.vel.set(0, 0, 0);
+  audio.play('gem');
+  fx.sparkle(gem.position, 0x9fe3ff, 30);
+  gem.visible = false;
+  rig.setMode('finish');
   ui.showFinish({
     secs: Math.round((performance.now() - state.startTime) / 1000),
-    fruit: state.fruit, fruitTotal: fruits.length,
-    crates: state.cratesBroken, crateTotal: crates.length
+    fruit: state.fruit, fruitTotal: fruits.length + BOUNCE_HITS,
+    crates: state.cratesBroken, crateTotal: state.crateTotal
   });
 }
 
-// Movement
-const center = new THREE.Vector3();
+// One simulation step of gameplay
+function simulate(dt) {
+  state.simTime += dt;
+  platforms.update(dt, state.simTime);
+  player.update(dt, readInput());
+  enemies.update(dt);
+  checkEnemies();
+  collectFruit();
+  const { exploded, ticked } = factory.update(dt, state.simTime);
+  if (ticked) audio.play('tick');
+  for (const c of exploded) explodeTnt(c);
 
-function movePlayer(dt) {
-  const p = state.pos;
-  let ix = 0, iz = 0;
-  if (keys.KeyA || keys.ArrowLeft) ix -= 1;
-  if (keys.KeyD || keys.ArrowRight) ix += 1;
-  if (keys.KeyW || keys.ArrowUp) iz -= 1;
-  if (keys.KeyS || keys.ArrowDown) iz += 1;
-  ix += ui.joy.x; iz += ui.joy.y;
-  const mag = Math.min(1, Math.hypot(ix, iz));
-  let vx = 0, vz = 0;
-  if (mag > 0.1) {
-    const n = Math.hypot(ix, iz);
-    vx = (ix / n) * SPEED * mag;
-    vz = (iz / n) * SPEED * mag;
-    let diff = Math.atan2(vx, vz) - state.facing;
-    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-    state.facing += diff * Math.min(1, dt * 14);
+  // Footsteps and running dust, in time with the stride
+  const s = player.state;
+  if (s.state === 'run') {
+    const stepIndex = Math.floor(s.walk / Math.PI);
+    if (stepIndex !== state.lastStep) { state.lastStep = stepIndex; audio.play('step'); fx.dust(s.pos, 1, dustColor(s.pos)); }
   }
-  vx += state.knock.x; vz += state.knock.y;
-  state.knock.multiplyScalar(Math.exp(-dt * 5));
-
-  // One axis at a time so walls slide instead of stick
-  const nx = THREE.MathUtils.clamp(p.x + vx * dt, -PATH_HALF_WIDTH, PATH_HALF_WIDTH);
-  if (!blocked(nx, p.z, p.y)) p.x = nx;
-  const nz = THREE.MathUtils.clamp(p.z + vz * dt, Z_END, Z_START);
-  if (!blocked(p.x, nz, p.y)) p.z = nz;
-
-  if (jumpQueued && state.onGround) { state.vy = JUMP; state.onGround = false; }
-  jumpQueued = false;
-  if (spinQueued && state.spin <= 0 && state.spinCooldown <= 0) state.spin = SPIN_TIME;
-  spinQueued = false;
-
-  const prevY = p.y;
-  state.vy -= GRAVITY * dt;
-  p.y += state.vy * dt;
-
-  // Landing on a crate breaks it and bounces Pip; holding jump bounces higher
-  if (state.vy < 0) {
-    for (const c of crates) {
-      if (c.broken) continue;
-      if (Math.abs(p.x - c.x) < 0.75 && Math.abs(p.z - c.z) < 0.75 && prevY >= c.top - 0.05 && p.y <= c.top) {
-        p.y = c.top;
-        state.vy = keys.Space ? 11 : 8;
-        hitCrate(c, false);
-        break;
-      }
-    }
-  }
-
-  const g = groundAt(p.x, p.z, prevY);
-  if (p.y <= g) { p.y = g; state.vy = 0; state.onGround = true; }
-  else state.onGround = false;
-
-  if (p.y < -8) { respawn(); return; }
-
-  if (state.onGround) {
-    for (let i = state.checkpoint + 1; i < checkpoints.length; i++) {
-      if (p.z < checkpoints[i].z) state.checkpoint = i;
-    }
-  }
-
-  // Spin attack breaks everything in reach
-  if (state.spin > 0) {
-    state.spin -= dt;
-    if (state.spin <= 0) state.spinCooldown = SPIN_COOLDOWN;
-    for (const c of crates) {
-      if (c.broken) continue;
-      if (Math.hypot(p.x - c.x, p.z - c.z) < SPIN_REACH && Math.abs(p.y + 0.7 - (c.base + 0.5)) < 1.3) hitCrate(c, true);
-    }
-  } else if (state.spinCooldown > 0) state.spinCooldown -= dt;
-
-  center.set(p.x, p.y + 0.8, p.z);
-  for (const f of fruits) {
-    if (f.userData.taken || f.position.distanceTo(center) > 1.1) continue;
-    f.userData.taken = true;
-    state.fruit++;
-    ui.setFruit(state.fruit);
-  }
-
-  if (gem.position.distanceTo(center) < 1.4) finish();
-
-  animatePip(dt, mag > 0.1 && state.onGround);
+  if (!state.done && gem.position.distanceTo(s.pos.clone().setY(s.pos.y + 0.8)) < 1.4) finish();
 }
-
-function animatePip(dt, moving) {
-  pip.root.position.copy(state.pos);
-  pip.root.rotation.y = state.facing;
-  state.walk += moving ? dt * 15 : 0;
-  pip.body.position.y = moving && !ui.reduceMotion ? Math.abs(Math.sin(state.walk)) * 0.13 : 0;
-  const stretch = state.onGround ? 1 : 1.08;
-  pip.body.scale.set(1 / Math.sqrt(stretch), stretch, 1 / Math.sqrt(stretch));
-  pip.feet[0].position.z = 0.08 + (moving ? Math.sin(state.walk) * 0.22 : 0);
-  pip.feet[1].position.z = 0.08 - (moving ? Math.sin(state.walk) * 0.22 : 0);
-  if (state.spin > 0) {
-    const k = 1 - state.spin / SPIN_TIME;
-    pip.body.rotation.y = k * Math.PI * 4;
-    pip.swirl.material.opacity = 0.55 * Math.sin(k * Math.PI);
-    pip.swirl.scale.setScalar(0.7 + k * 0.5);
-  } else {
-    pip.body.rotation.y = 0;
-    pip.swirl.material.opacity = 0;
-  }
-}
-
-// Resize
-function resize() {
-  const w = window.innerWidth, h = window.innerHeight;
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  // Narrow screens need a wider view to see the path ahead
-  camera.fov = w / h < 0.8 ? 72 : 58;
-  camera.updateProjectionMatrix();
-}
-window.addEventListener('resize', resize);
-resize();
 
 // Loop
 const clock = new THREE.Clock();
-const camPos = new THREE.Vector3(0, 3.2, 9.5), camLook = new THREE.Vector3(0, 1.2, -4);
-const wantPos = new THREE.Vector3(), wantLook = new THREE.Vector3();
+let t = 0;
+function frame() {
+  const raw = clock.getDelta();
+  fpsWatch.tick(raw);
+  const dt = Math.min(raw, 0.05);
+  t += dt;
+  wind.uTime.value += dt;
 
-function update(dt, t) {
-  palms.forEach(p => { p.crown.rotation.z = Math.sin(t * 1.2 + p.phase) * 0.05; });
-  lava.material.emissiveIntensity = 0.75 + Math.sin(t * 3) * 0.2;
-  gem.rotation.y = t * 1.5;
-  gem.position.y = gemPosition.y + Math.sin(t * 2) * 0.15;
+  const playing = ui.mode === 'playing' && !ui.paused && !state.done;
+  if (playing) {
+    if (state.hitStop > 0) state.hitStop -= dt;
+    else simulate(dt);
+  } else if (!ui.paused) {
+    // Keep the world alive behind menus
+    state.simTime += dt;
+    platforms.update(dt, state.simTime);
+    enemies.update(dt);
+    factory.update(dt, state.simTime);
+    player.sync(dt);
+  }
 
-  fruits.forEach(f => {
+  // Ambient animation
+  for (const f of fruits) {
     const u = f.userData;
     if (u.taken) {
-      if (!f.visible) return;
+      if (!f.visible) continue;
       u.pop += dt * 5;
       f.position.y += dt * 5;
       f.scale.setScalar(Math.max(0, 1 - u.pop));
       if (u.pop >= 1) f.visible = false;
-      return;
+      continue;
     }
     f.rotation.y = t * 2.5 + u.phase;
     f.position.y = u.base.y + Math.sin(t * 3 + u.phase) * 0.1;
-  });
-
-  if (state.started && !state.paused && !state.done) movePlayer(dt);
-  else animatePip(dt, false);
-
-  if (!state.paused) for (const c of factory.update(dt, crates)) explodeTnt(c);
-
-  // Camera sits behind and above Pip, looking down the path
-  const p = state.pos;
-  if (state.started) {
-    wantPos.set(p.x * 0.55, p.y + 4.4, p.z + 8.2);
-    wantLook.set(p.x * 0.75, p.y + 1.1, p.z - 4.5);
-  } else {
-    wantPos.set(Math.sin(t * 0.25) * 2.5, 3.2, 9.5);
-    wantLook.set(0, 1.2, -4);
   }
-  const k = 1 - Math.exp(-dt * 6);
-  camPos.lerp(wantPos, k);
-  camLook.lerp(wantLook, k);
-  camera.position.copy(camPos);
-  if (state.shake > 0) {
-    state.shake -= dt;
-    const s = state.shake * 0.6;
-    camera.position.x += (Math.random() - 0.5) * s;
-    camera.position.y += (Math.random() - 0.5) * s;
-  }
-  camera.lookAt(camLook);
+  gem.rotation.y = t * 1.5;
+  gem.position.y = L.gemPosition.y + Math.sin(t * 2) * 0.15;
+  if (Math.random() < 0.08 && gem.visible) fx.sparkle(gem.position, 0x9fe3ff, 1);
+  for (const tr of scenery.torches) if (Math.random() < dt * 4) fx.sparkle(tr.pos, 0xffb347, 1);
+  particles.update(dt);
+  scenery.update(dt, t);
+  water.update(dt);
 
-  // Keep the shadow box around Pip
-  sun.position.set(p.x + 14, p.y + 26, p.z + 6);
-  sun.target.position.set(p.x, p.y, p.z - 6);
+  rig.update(dt, player.state, !settings.shake);
+  sky.update(dt, camera);
+
+  // Shadow box follows the camera's focus
+  const focus = rig.mode === 'menu' ? camera.position : player.state.pos;
+  sun.position.set(focus.x + SUN_DIR.x * 40, focus.y + SUN_DIR.y * 40, focus.z - 6 + SUN_DIR.z * 40);
+  sun.target.position.set(focus.x, focus.y, focus.z - 6);
+
+  if (tier.post) post.render(); else renderer.render(scene, camera);
+  requestAnimationFrame(frame);
 }
 
-function loop() {
-  const dt = Math.min(clock.getDelta(), 0.05);
-  update(dt, clock.elapsedTime);
-  renderer.render(scene, camera);
-  requestAnimationFrame(loop);
-}
-ui.setCrates(0, crates.length);
-// Dev-only hook for stepping the simulation from the console
-if (import.meta.env.DEV) window.__game = { state, crates, step: (dt = 1 / 60) => update(dt, clock.elapsedTime) };
-loop();
+resize();
+load().then(() => {
+  // Dev-only hook for stepping the simulation from the console
+  if (import.meta.env.DEV) {
+    window.__game = { state, player, world, enemies, crates: world.crates, ui, step: (dt = 1 / 60) => simulate(dt) };
+  }
+  if (new URLSearchParams(location.search).has('debug')) {
+    import('./debug.js').then(m => m.createDebugPanel({ player, rig, state, applyTier, renderer, post, sun, hemi, L }));
+  }
+  requestAnimationFrame(frame);
+});
