@@ -76,6 +76,7 @@
     <button class="big" id="playBtn">Play</button>
     <button id="skipBtn">Just show me the portfolio</button>
     <button id="menuSettingsBtn">Settings</button>
+    <button id="menuCreditsBtn">Credits</button>
   </nav>
 </div>
 
@@ -86,6 +87,7 @@
       <button id="resumeBtn">Resume</button>
       <button class="plain" id="pauseAllBtn">See everything</button>
       <button class="plain" id="pauseSettingsBtn">Settings</button>
+      <button class="plain" id="pauseCreditsBtn">Credits</button>
       <button class="plain" id="restartBtn">Restart</button>
     </div>
     <dl class="controls">
@@ -93,6 +95,26 @@
       <dt>Jump</dt><dd>Space (hold for higher)</dd>
       <dt>Spin</dt><dd>Shift / K / X</dd>
       <dt>Pause</dt><dd>Esc / P</dd>
+    </dl>
+  </div>
+</div>
+
+<div class="sign hidden" id="credits" role="dialog" aria-labelledby="creditsTitle" inert>
+  <div class="board">
+    <h2 id="creditsTitle" tabindex="-1">Credits</h2>
+    <p class="credit-name">Made by Airu</p>
+    <p class="credit-role">Software Engineer · Tokyo</p>
+    <p>I build backend systems for a living: APIs, ML platforms and the infrastructure that keeps them running. This island is a side project, made from scratch with Three.js.</p>
+    <div class="stack">
+      <a class="button" id="portfolioLink" href="https://dev.byairu.com" target="_blank" rel="noopener">My engineering portfolio ↗</a>
+      <button class="plain" id="creditsBack">Back</button>
+    </div>
+    <dl class="controls">
+      <dt>Game, code, levels</dt><dd>Airu</dd>
+      <dt>Character</dt><dd>Airu's cat, modelled with Hunyuan3D, animated with Mixamo</dd>
+      <dt>Built with</dt><dd>Three.js, Vite</dd>
+      <dt>Fonts</dt><dd>Lilita One, Nunito</dd>
+      <dt>Inspired by</dt><dd>Crash Bandicoot</dd>
     </dl>
   </div>
 </div>

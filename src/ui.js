@@ -138,6 +138,9 @@ export function createUI(handlers) {
   $('playBtn').addEventListener('click', play);
   $('skipBtn').addEventListener('click', () => { handlers.onUnlock?.(); click(); openSummary(); });
   $('menuSettingsBtn').addEventListener('click', () => { click(); openOverlay('settings'); });
+  $('menuCreditsBtn').addEventListener('click', () => { click(); openOverlay('credits'); });
+  $('pauseCreditsBtn').addEventListener('click', () => { click(); openOverlay('credits'); });
+  $('creditsBack').addEventListener('click', () => { click(); closeOverlay(); });
   $('allBtn').addEventListener('click', () => { click(); openSummary(); });
   $('pauseBtn').addEventListener('click', () => { click(); openOverlay('pause'); });
   $('muteBtn').addEventListener('click', () => { handlers.onUnlock?.(); settings.muted = !settings.muted; applySettings(); });
@@ -226,7 +229,7 @@ export function createUI(handlers) {
     ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
     setTimeout(() => {
       overlayStack.length = 0;
-      ['pause', 'settings', 'summary'].forEach(id => show($(id), false));
+      ['pause', 'settings', 'summary', 'credits'].forEach(id => show($(id), false));
       overlayStack.push('finish');
       show($('finish'), true);
       $('finishTitle').focus();
