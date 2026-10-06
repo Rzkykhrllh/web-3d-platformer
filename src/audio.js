@@ -118,10 +118,11 @@ export function createAudio() {
     click: () => tone({ type: 'sine', from: 700, dur: 0.05, vol: 0.06 })
   };
 
-  // Generated music in the spirit of PS1-era jungle levels: marimba lead,
-  // bongos and log drum, shaker, a plucky bass and a soft pad, in D dorian
-  // over Dm - C - Bb - C. It all goes through a lo-fi chain (big console-style
-  // reverb, top end rolled off) so it sounds like it came out of a 90s console.
+  // Generated music in the spirit of Crash's jungle levels: a shuffled 16th
+  // groove with congas, bongos, woodblock, log drum and shaker, a bouncing bass,
+  // a marimba call answered by a whistle over a didgeridoo drone, and a jaw harp
+  // "boing" at the end of each phrase. D dorian over Dm - C - Bb - C. It all goes
+  // through a lo-fi chain (big console-style reverb, top end rolled off).
   function startMusic() {
     if (!ctx || music) return;
     if (AUDIO.musicUrl) {
@@ -149,74 +150,116 @@ export function createAudio() {
     input.connect(reverb).connect(wet).connect(tone);
     tone.connect(musicBus);
 
-    const bpm = 120, step = 60 / bpm / 4; // sixteenth notes
+    const bpm = 128, step = 60 / bpm / 4; // sixteenth notes
+    const swing = step * 0.3;              // off-beat 16ths land late: the shuffle
     const hz = n => 440 * Math.pow(2, (n - 69) / 12);
     const chords = [[62, 65, 69], [60, 64, 67], [58, 62, 65], [60, 64, 67]];
     const roots = [38, 36, 34, 36];
     const _ = null;
-    // Eight bars: a call (A) and an answer (B), 16 steps each
-    const lead = [
-      [69, _, 72, _, 74, _, 72, 69, _, 67, _, 69, _, _, _, _],
-      [67, _, 69, _, 72, _, 69, 67, _, 64, _, 67, _, _, _, _],
-      [65, _, 69, _, 70, _, 69, 65, _, 62, _, 65, _, 67, _, _],
-      [67, _, _, 64, _, 67, _, 72, _, 71, _, 72, _, _, _, _],
-      [74, 74, _, 72, _, 69, _, _, 72, _, 69, _, 67, _, 65, _],
-      [64, _, 67, _, 69, _, 72, _, 71, _, 69, _, 67, _, _, _],
-      [65, 65, _, 67, _, 69, _, _, 70, _, 69, _, 67, _, 65, _],
-      [67, _, _, _, 64, _, _, _, 62, _, _, _, _, _, _, _]
+    // Eight bars, 16 steps each. A: a bouncy marimba call. B: a whistle answers
+    // over a didgeridoo drone, with the marimba dropping in and out.
+    const marimbaPart = [
+      [74, _, 77, 74, _, 69, _, 72, 74, _, _, 77, _, 76, 74, _],
+      [72, _, 76, 72, _, 67, _, 71, 72, _, _, 76, _, 74, 72, _],
+      [70, _, 74, 70, _, 65, _, 69, 70, _, 72, _, 74, _, 77, _],
+      [76, _, _, 74, _, 72, _, _, 69, _, 67, _, _, _, _, _],
+      [_, _, _, _, _, _, _, _, _, _, 74, _, 77, _, _, _],
+      [_, _, _, _, _, _, _, _, _, _, 72, _, 76, _, _, _],
+      [_, _, _, _, _, _, _, _, _, _, 70, _, 74, _, _, _],
+      [_, _, _, _, _, _, _, _, 74, 76, 77, _, 76, _, 74, _]
     ];
-    const kick = [0, 6, 10], bongoHi = [3, 7, 11, 14, 15], bongoLo = [4, 12];
-    const bassSteps = { 0: 0, 3: 0, 6: 7, 8: 12, 11: 0, 14: 10 };
+    const whistlePart = [
+      _, _, _, _,
+      [81, _, _, _, 79, _, 77, _, 76, _, _, _, _, _, _, _],
+      [72, _, _, _, 74, _, 76, _, 79, _, _, _, _, _, _, _],
+      [77, _, _, _, 76, _, 74, _, 72, _, _, _, _, _, _, _],
+      [69, _, _, _, 72, _, _, _, _, _, _, _, _, _, _, _]
+    ];
+    // Percussion, by step in the bar
+    const P = {
+      kick: [0, 7, 10], congaOpen: [3, 11], congaSlap: [6, 14, 15],
+      bongo: [2, 5, 13], block: [4, 12], log: [8, 9]
+    };
+    // Bass: semitones above the root, bouncing between root and octave
+    const bassLine = { 0: 0, 2: 12, 3: 0, 6: 7, 8: 0, 10: 12, 11: 0, 14: 10 };
 
     const env = (g, t, vol, attack, decay) => {
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(vol, t + attack);
       g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
     };
+    const osc = (type, f, t, dur, dest) => {
+      const o = ctx.createOscillator(); o.type = type; o.frequency.value = f;
+      o.connect(dest); o.start(t); o.stop(t + dur); return o;
+    };
     function marimba(f, t, vol) {
-      const g = ctx.createGain(); env(g, t, vol, 0.004, 0.38); g.connect(input);
-      [[1, 1], [4, 0.12], [9.8, 0.04]].forEach(([mul, amt]) => {
-        const o = ctx.createOscillator(), a = ctx.createGain();
-        o.frequency.value = f * mul; a.gain.value = amt;
-        o.connect(a).connect(g); o.start(t); o.stop(t + 0.45);
+      const g = ctx.createGain(); env(g, t, vol, 0.003, 0.32); g.connect(input);
+      [[1, 1], [4, 0.14], [9.8, 0.05]].forEach(([mul, amt]) => {
+        const a = ctx.createGain(); a.gain.value = amt; a.connect(g);
+        osc('sine', f * mul, t, 0.4, a);
       });
     }
+    // Whistle: a sine with vibrato that scoops up into each note
+    function whistle(f, t, dur) {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.06, t + 0.04);
+      g.gain.setValueAtTime(0.06, t + dur * 0.75);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      g.connect(input);
+      const o = osc('sine', f, t, dur + 0.05, g);
+      o.frequency.setValueAtTime(f * 0.94, t);
+      o.frequency.exponentialRampToValueAtTime(f, t + 0.06);
+      const lfo = ctx.createOscillator(), depth = ctx.createGain();
+      lfo.frequency.value = 5.5; depth.gain.value = f * 0.012;
+      lfo.connect(depth).connect(o.frequency); lfo.start(t + 0.12); lfo.stop(t + dur + 0.05);
+    }
     function drum(f, t, vol, decay, drop = 1.6) {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.frequency.setValueAtTime(f * drop, t);
+      const g = ctx.createGain(); env(g, t, vol, 0.002, decay); g.connect(input);
+      const o = osc('sine', f * drop, t, decay + 0.05, g);
       o.frequency.exponentialRampToValueAtTime(f, t + 0.03);
-      env(g, t, vol, 0.002, decay);
-      o.connect(g).connect(input); o.start(t); o.stop(t + decay + 0.05);
     }
-    function shaker(t, vol) {
+    function noiseHit(t, vol, type, freq, decay, q = 1) {
       const src = ctx.createBufferSource(); src.buffer = noise;
-      const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000;
-      const g = ctx.createGain(); env(g, t, vol, 0.003, 0.05);
+      const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+      const g = ctx.createGain(); env(g, t, vol, 0.002, decay);
       src.connect(f).connect(g).connect(input);
-      src.start(t, Math.random()); src.stop(t + 0.08);
+      src.start(t, Math.random()); src.stop(t + decay + 0.05);
     }
+    function congaSlap(t) { drum(420, t, 0.09, 0.07, 1.3); noiseHit(t, 0.06, 'bandpass', 2500, 0.04, 2); }
+    function woodblock(t) { drum(1600, t, 0.07, 0.05, 1.05); }
     function bass(n, t) {
-      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 6;
-      f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(220, t + 0.18);
-      const g = ctx.createGain(); env(g, t, 0.16, 0.005, 0.24);
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 7;
+      f.frequency.setValueAtTime(1100, t); f.frequency.exponentialRampToValueAtTime(240, t + 0.16);
+      const g = ctx.createGain(); env(g, t, 0.17, 0.004, 0.2);
       ['triangle', 'square'].forEach((type, k) => {
-        const o = ctx.createOscillator(), a = ctx.createGain();
-        o.type = type; o.frequency.value = hz(n); a.gain.value = k ? 0.35 : 1;
-        o.connect(a).connect(f); o.start(t); o.stop(t + 0.3);
+        const a = ctx.createGain(); a.gain.value = k ? 0.3 : 1; a.connect(f);
+        const o = osc(type, hz(n) * 0.97, t, 0.26, a);
+        o.frequency.exponentialRampToValueAtTime(hz(n), t + 0.03); // tiny slide up
       });
       f.connect(g).connect(input);
     }
-    function pad(notes, t, dur) {
-      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1100;
+    // Jaw harp "boing": a buzzy note through a resonant filter sweeping up and down
+    function boing(n, t) {
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 9;
+      f.frequency.setValueAtTime(400, t);
+      f.frequency.exponentialRampToValueAtTime(1800, t + 0.12);
+      f.frequency.exponentialRampToValueAtTime(500, t + 0.35);
+      const g = ctx.createGain(); env(g, t, 0.22, 0.005, 0.38);
+      osc('sawtooth', hz(n), t, 0.45, f);
+      f.connect(g).connect(input);
+    }
+    // Didgeridoo-ish drone: low saw, a formant that wobbles, for a whole bar
+    function drone(n, t, dur) {
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 4; f.frequency.value = 420;
+      const lfo = ctx.createOscillator(), depth = ctx.createGain();
+      lfo.frequency.value = 2.1; depth.gain.value = 180;
+      lfo.connect(depth).connect(f.frequency); lfo.start(t); lfo.stop(t + dur);
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(0.022, t + 0.35);
+      g.gain.linearRampToValueAtTime(0.07, t + 0.2);
       g.gain.linearRampToValueAtTime(0.0001, t + dur);
-      notes.forEach(n => [-7, 7].forEach(cents => {
-        const o = ctx.createOscillator(); o.type = 'sawtooth';
-        o.frequency.value = hz(n); o.detune.value = cents;
-        o.connect(f); o.start(t); o.stop(t + dur + 0.05);
-      }));
+      osc('sawtooth', hz(n), t, dur + 0.05, f);
       f.connect(g).connect(input);
     }
 
@@ -226,14 +269,24 @@ export function createAudio() {
       if (next < ctx.currentTime - 0.1) next = ctx.currentTime + 0.05;
       while (next < ctx.currentTime + 0.2) {
         const bar = Math.floor(i / 16) % 8, s = i % 16, chord = bar % 4;
-        if (s === 0) pad(chords[chord], next, step * 16);
-        const m = lead[bar][s];
-        if (m) marimba(hz(m + 12), next, 0.085);
-        if (s in bassSteps) bass(roots[chord] + bassSteps[s], next);
-        if (kick.includes(s)) drum(58, next, 0.32, 0.28, 2.4);
-        if (bongoHi.includes(s)) drum(330, next, 0.1, 0.11);
-        if (bongoLo.includes(s)) drum(220, next, 0.12, 0.14);
-        shaker(next, s % 4 === 2 ? 0.05 : 0.025);
+        const t = next + (s % 2 ? swing : 0);
+        if (s === 0 && bar >= 4) drone(roots[chord] + 12, t, step * 16);
+        const m = marimbaPart[bar][s];
+        if (m) marimba(hz(m + 12), t, 0.08);
+        const wp = whistlePart[bar];
+        if (wp && wp[s]) {
+          let len = 1; while (s + len < 16 && !wp[s + len]) len++;
+          whistle(hz(wp[s] + 12), t, Math.min(len, 6) * step * 0.95);
+        }
+        if (s in bassLine) bass(roots[chord] + bassLine[s], t);
+        if (P.kick.includes(s)) drum(58, t, 0.3, 0.26, 2.4);
+        if (P.congaOpen.includes(s)) drum(200, t, 0.13, 0.18, 1.3);
+        if (P.congaSlap.includes(s)) congaSlap(t);
+        if (P.bongo.includes(s)) drum(360, t, 0.09, 0.09);
+        if (P.block.includes(s)) woodblock(t);
+        if (P.log.includes(s) && bar % 2) drum(hz(roots[chord] + (s === 8 ? 24 : 31)), t, 0.12, 0.16, 1.1);
+        if (s === 12 && (bar === 3 || bar === 7)) boing(roots[chord] + 12, t);
+        noiseHit(t, s % 4 === 2 ? 0.045 : 0.022, 'highpass', 7000, 0.045);
         next += step; i++;
       }
     }
