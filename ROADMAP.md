@@ -7,7 +7,7 @@ Tanda 👤 = butuh keputusan, aset, atau akun dari kamu.
 
 ## 0. Keputusan awal
 
-- [ ] 👤 **[P1]** Art direction: toon/hand-painted ala Crash N. Sane, atau stylized PBR. Bikin moodboard 5–10 screenshot
+- [x] **[P1]** Art direction: stylized/cartoon seperti versi sekarang (warna jenuh, bentuk bulat, outline). Bukan realistis: lebih ringan dan lebih cocok dengan tema
 - [ ] 👤 **[P1]** Sumber aset: bikin sendiri di Blender, pack CC0, atau commission karakter utama
 - [ ] 👤 **[P2]** Tema Crash (nama, karakter) atau original
 
@@ -52,7 +52,7 @@ Tanda 👤 = butuh keputusan, aset, atau akun dari kamu.
 - [ ] 👤 **[P1]** Modular kit lingkungan: jalur, tebing, batu, akar, jembatan, reruntuhan
 - [ ] 👤 **[P2]** Vegetasi final (sekarang palem dan semak prosedural)
 - [ ] 👤 **[P2]** Props: totem, obor, tanda kayu, tong, tali
-- [ ] 👤 **[P2]** Tekstur asli (ambientCG / Poly Haven) menggantikan tekstur noise di `src/render/textures.js`
+- [ ] 👤 **[P2]** Tekstur stylized/hand-painted menggantikan tekstur noise di `src/render/textures.js` (hindari tekstur foto-realistis)
 - [ ] 👤 **[P3]** Logo dan judul game
 
 ## 5. Level design
