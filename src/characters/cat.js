@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { canvasTexture } from '../util.js';
+import { toon } from '../render/toon.js';
 
 // Tabby cat in a red Hawaiian shirt, built from simple shapes after the
 // reference art. Faces +z. Same interface as createPip:
@@ -97,7 +98,7 @@ export function createCat() {
   const body = new THREE.Group();
   root.add(body);
 
-  const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
+  const std = (color, extra = {}) => toon({ color, ...extra });
   const outlineMat = new THREE.MeshBasicMaterial({ color: 0x1e1e22, side: THREE.BackSide });
   const add = (parent, geo, material, { pos = [0, 0, 0], rot = [0, 0, 0], scale = [1, 1, 1], outline = 0, shadow = true } = {}) => {
     const m = new THREE.Mesh(geo, material);
@@ -119,12 +120,12 @@ export function createCat() {
   shirtMap.wrapS = THREE.RepeatWrapping;
   shirtMap.repeat.set(4, 1);
   const shirt = std(0xffffff, { map: shirtMap, side: THREE.DoubleSide });
-  const plainFur = std(C.fur, { roughness: 0.8 });
+  const plainFur = std(C.fur);
   const tee = std(C.tee);
-  const shorts = std(C.shorts, { roughness: 0.85 });
-  const gold = std(C.gold, { metalness: 0.7, roughness: 0.3 });
-  const black = std(0x111111, { roughness: 0.3 });
-  const white = std(0xffffff, { roughness: 0.25 });
+  const shorts = std(C.shorts);
+  const gold = std(C.gold);
+  const black = std(0x111111);
+  const white = std(0xffffff);
 
   // Torso: white tee under an open red shirt
   add(body, new THREE.CylinderGeometry(0.27, 0.3, 0.42, 12), tee, { pos: [0, 0.98, 0], outline: 0.04 });
@@ -142,7 +143,7 @@ export function createCat() {
   for (let i = 0; i < 3; i++) add(body, new THREE.SphereGeometry(0.018, 6, 4), white, { pos: [0.14, 1.08 - i * 0.11, 0.3], shadow: false });
 
   // Belt with buckle, key and shell charm
-  add(body, new THREE.TorusGeometry(0.3, 0.035, 6, 20), std(C.belt, { roughness: 0.9 }), { pos: [0, 0.76, 0], rot: [Math.PI / 2, 0, 0] });
+  add(body, new THREE.TorusGeometry(0.3, 0.035, 6, 20), std(C.belt), { pos: [0, 0.76, 0], rot: [Math.PI / 2, 0, 0] });
   add(body, new THREE.BoxGeometry(0.1, 0.07, 0.03), gold, { pos: [0, 0.76, 0.31] });
   const key = new THREE.Group();
   key.position.set(0.17, 0.72, 0.27);
@@ -198,7 +199,7 @@ export function createCat() {
 
   // Spiky fur cape behind each shoulder
   const wingGeo = furWing();
-  const wingMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide });
+  const wingMat = toon({ vertexColors: true, side: THREE.DoubleSide });
   [-1, 1].forEach(s => {
     const w = add(body, wingGeo, wingMat, { pos: [0.24 * s, 1.5, -0.18], rot: [0.1, s * -0.3, s * -0.22], scale: [s * 1.05, 1.18, 1] });
     w.userData.side = s;
@@ -216,7 +217,7 @@ export function createCat() {
       ring.position.set(-0.05, -0.62, 0.06);
       ring.rotation.set(0.3, 0.4, 0.2);
       add(ring, new THREE.TorusGeometry(0.17, 0.014, 6, 24), gold);
-      add(ring, new THREE.OctahedronGeometry(0.045, 0), std(C.gem, { emissive: C.gem, emissiveIntensity: 0.6, roughness: 0.15 }), { pos: [0, -0.18, 0] });
+      add(ring, new THREE.OctahedronGeometry(0.045, 0), std(C.gem, { emissive: C.gem, emissiveIntensity: 0.6 }), { pos: [0, -0.18, 0] });
       arm.add(ring);
     }
     body.add(arm);
@@ -229,7 +230,7 @@ export function createCat() {
     foot.position.set(0.15 * s, 0.1, 0.08);
     add(foot, new THREE.CylinderGeometry(0.08, 0.09, 0.3, 8), fur, { pos: [0, 0.17, -0.06] });
     add(foot, new THREE.SphereGeometry(0.12, 10, 8), furLight, { pos: [0, 0.0, 0.03], scale: [1, 0.6, 1.4], outline: 0.06 });
-    add(foot, new THREE.BoxGeometry(0.26, 0.05, 0.38), std(C.sandal, { roughness: 0.9 }), { pos: [0, -0.075, 0.03] });
+    add(foot, new THREE.BoxGeometry(0.26, 0.05, 0.38), std(C.sandal), { pos: [0, -0.075, 0.03] });
     add(foot, new THREE.BoxGeometry(0.27, 0.05, 0.06), std(0x4a2e18), { pos: [0, 0.0, 0.08] });
     root.add(foot);
     return foot;

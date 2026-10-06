@@ -13,7 +13,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 //                  checkpoint, activator, metal). Props: content, ghost
 //   FRUIT*         a fruit at this point
 //   ENEMY*         a crab patrolling around this point. Props: range, speed
-//   MOVER*         moving platform (mesh). Props: axis ("x" or "z"), range, speed
+//   MOVER*         moving platform (mesh). Props: axis ("x", "y" or "z"), range, speed
 //   CRUMBLE*       crumbling platform (mesh)
 //   SPAWN          where Pip starts
 //   CHECKPOINT*    extra respawn points

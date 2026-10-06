@@ -20,7 +20,7 @@ Tanda 👤 = butuh keputusan, aset, atau akun dari kamu.
 - [ ] **[P2]** Collision mesh (Rapier / BVH). Sekarang kotak AABB; cukup untuk level kotak-kotak, kurang untuk medan miring
 - [x] **[P2]** State machine player (idle, run, jump, fall, hurt + spin)
 - [ ] **[P2]** Pindah ke TypeScript (sengaja ditunda sampai struktur stabil)
-- [x] **[P2]** Quality tier otomatis (low/medium/high) + turun sendiri kalau FPS rendah
+- [x] **[P2]** Quality tier otomatis (low/medium/high) + turun sendiri kalau FPS rendah. Desktop mulai di medium
 - [x] **[P3]** Debug panel (`?debug`): tuning gerak, kamera, lighting, teleport
 
 ## 2. Game feel
@@ -36,12 +36,12 @@ Tanda 👤 = butuh keputusan, aset, atau akun dari kamu.
 
 ## 3. Visual dan rendering
 
-- [x] **[P1]** Post-processing: tone mapping, bloom, color grade + vignette
-- [x] **[P1]** Langit gradien + environment map untuk pantulan
+- [x] **[P1]** Toon shading (`src/render/toon.js`): semua material pakai `MeshToonMaterial` 3 band, tanpa normal map / env map
+- [x] **[P1]** Post-processing (bloom, color grade + vignette), hanya di quality high
+- [x] **[P1]** Langit gradien
 - [ ] 👤 **[P1]** Lighting baked (lightmap dari Blender), setelah level dibuat di Blender
 - [x] **[P1]** Shader air dengan gelombang
 - [x] **[P2]** Rumput, semak, palem instanced + shader angin
-- [ ] **[P2]** Ambient occlusion (SSAO / N8AO)
 - [x] **[P2]** Outline di karakter dan peti
 - [ ] **[P3]** Variasi suasana per section (pagi, teduh, sore)
 
@@ -64,6 +64,7 @@ Tanda 👤 = butuh keputusan, aset, atau akun dari kamu.
 - [x] **[P2]** Musuh: kepiting (injak atau spin)
 - [x] **[P2]** Varian peti: pantul, besi, checkpoint, "!" + peti hantu
 - [ ] **[P2]** Segmen kejar-kejaran batu menggelinding
+- [x] **[P2]** Seksi Fire Temple: kayu menggelinding, semburan api berirama, peti Nitro, lift vertikal ke puncak kuil
 - [ ] **[P2]** Area rahasia / gem bonus (sekarang: toast "All crates!" + rank gold)
 - [ ] **[P3]** Sistem nyawa (sengaja belum, demi recruiter)
 
@@ -86,13 +87,13 @@ Tanda 👤 = butuh keputusan, aset, atau akun dari kamu.
 
 ## 8. Konten portfolio
 
-- [ ] 👤 **[P1]** Ganti placeholder di `src/content.js` dengan isi asli
+- [x] 👤 **[P1]** Ganti placeholder di `src/content.js` dengan isi asli (dari dev.byairu.com)
 - [ ] 👤 **[P1]** Screenshot/diagram tiap project (tanpa info rahasia kantor)
 - [ ] 👤 **[P2]** CV yang bisa diunduh
 
 ## 9. Rilis
 
-- [ ] 👤 **[P1]** Deploy (Vercel / Netlify / GitHub Pages) + domain. Build sudah pakai path relatif, jadi tinggal upload `dist/`
+- [x] 👤 **[P1]** Deploy (Dokploy, lihat `Dockerfile`)
 - [x] **[P1]** Versi non-game: `/portfolio.html` + isi `<noscript>`, dibuat otomatis saat build
 - [ ] 👤 **[P1]** Uji di HP kelas menengah (target 30+ FPS)
 - [ ] **[P2]** Gambar Open Graph (`public/og-image.png`, 1200×630) setelah visual final; meta tag lain sudah ada

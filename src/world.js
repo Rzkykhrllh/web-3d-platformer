@@ -40,14 +40,41 @@ export function createWorld() {
     return best;
   }
 
-  // Crate whose top Pip lands on between prevY and y
+  // Crate whose top Pip lands on between prevY and y. In a stack, the highest one:
+  // a fast fall can cross more than one crate top in a single step.
   function crateBelow(x, z, prevY, y) {
+    let best = null;
     for (const c of crates) {
       if (!c.solid || c.standable) continue;
-      if (Math.abs(x - c.x) < 0.75 && Math.abs(z - c.z) < 0.75 && prevY >= c.top - 0.05 && y <= c.top) return c;
+      if (Math.abs(x - c.x) < 0.75 && Math.abs(z - c.z) < 0.75 && prevY >= c.top - 0.05 && y <= c.top && (!best || c.top > best.top)) best = c;
     }
-    return null;
+    return best;
   }
 
-  return { surfaces, crates, addSurface, blocked, groundAt, crateBelow, overlaps };
+  // Crate whose underside a rising head (prevHead -> head) hits; the lowest one
+  function crateAbove(x, z, prevHead, head) {
+    let best = null;
+    for (const c of crates) {
+      if (!c.solid) continue;
+      if (Math.abs(x - c.x) < 0.7 && Math.abs(z - c.z) < 0.7 && prevHead <= c.base + 0.05 && head >= c.base && (!best || c.base < best.base)) best = c;
+    }
+    return best;
+  }
+
+  // If a crate appeared around a body (ghost crates materialising), move the body
+  // out along the shortest way. Otherwise `blocked` would refuse every move and
+  // it would be stuck for good.
+  function pushOut(p, r, height) {
+    for (const c of crates) {
+      if (!c.solid || p.y >= c.top - 0.3 || p.y + height <= c.base) continue;
+      const left = p.x + r - (c.x - 0.5), right = c.x + 0.5 - (p.x - r);
+      const back = p.z + r - (c.z - 0.5), front = c.z + 0.5 - (p.z - r);
+      if (left <= 0 || right <= 0 || back <= 0 || front <= 0) continue;
+      const m = Math.min(left, right, back, front);
+      if (m === left) p.x -= left; else if (m === right) p.x += right;
+      else if (m === back) p.z -= back; else p.z += front;
+    }
+  }
+
+  return { surfaces, crates, addSurface, blocked, groundAt, crateBelow, crateAbove, pushOut, overlaps };
 }

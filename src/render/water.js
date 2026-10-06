@@ -1,16 +1,15 @@
 import * as THREE from 'three';
+import { toon } from './toon.js';
 
-// Animated sea: standard material (so it gets lighting, fog and reflections)
-// with waves added in the vertex shader and sparkly highlights in the fragment shader.
+// Animated sea: toon material (so it gets lighting and fog) with waves added in
+// the vertex shader and caustic bands and crest highlights in the fragment shader.
 
 export function createWater(scene, { size = 600, segments = 160, y = -2.3 } = {}) {
   const geo = new THREE.PlaneGeometry(size, size, segments, segments);
   geo.rotateX(-Math.PI / 2);
   const uniforms = { uTime: { value: 0 } };
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = toon({
     color: 0x1aa6c4,
-    roughness: 0.12,
-    metalness: 0.0,
     transparent: true,
     opacity: 0.92
   });

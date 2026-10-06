@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { toon } from './render/toon.js';
 
 // Crumbling and moving platforms: a mesh plus a live surface in the world.
 
 const CRUMBLE_DELAY = 0.6, CRUMBLE_RESPAWN = 3;
 
 function plankMaterial() {
-  return new THREE.MeshStandardMaterial({ color: 0x9c6b3a, roughness: 0.85 });
+  return toon({ color: 0x9c6b3a });
 }
 
 function platformMesh(w, d, material) {
@@ -16,13 +17,13 @@ function platformMesh(w, d, material) {
   body.castShadow = body.receiveShadow = true;
   g.add(body);
   // Plank lines and rope bindings
-  const lineMat = new THREE.MeshStandardMaterial({ color: 0x5e3a1a });
+  const lineMat = toon({ color: 0x5e3a1a });
   for (let i = 1; i < 4; i++) {
     const line = new THREE.Mesh(new THREE.BoxGeometry(w + 0.02, 0.04, 0.05), lineMat);
     line.position.set(0, 0.005, -d / 2 + (d * i) / 4);
     g.add(line);
   }
-  const rope = new THREE.MeshStandardMaterial({ color: 0xd8c08a });
+  const rope = toon({ color: 0xd8c08a });
   [-1, 1].forEach(s => {
     const r = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.05, 6, 12), rope);
     r.rotation.y = Math.PI / 2;
@@ -75,11 +76,13 @@ export function createPlatforms(scene, world, { crumblers = [], movers = [] }, e
       if (p.kind === 'move') {
         const off = Math.sin(t * p.speed) * p.range;
         const cx = p.home.x + (p.axis === 'x' ? off : 0);
+        const cy = p.home.y + (p.axis === 'y' ? off : 0);
         const cz = p.home.z + (p.axis === 'z' ? off : 0);
         s.dx = cx - (s.x0 + s.x1) / 2;
+        s.dy = cy - s.top;
         s.dz = cz - (s.z0 + s.z1) / 2;
-        setBounds(s, cx, p.home.y, cz, p.w, p.d);
-        p.mesh.position.set(cx, p.home.y, cz).add(p.offset);
+        setBounds(s, cx, cy, cz, p.w, p.d);
+        p.mesh.position.set(cx, cy, cz).add(p.offset);
         continue;
       }
       // Crumbling

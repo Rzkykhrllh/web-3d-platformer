@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { toon } from './render/toon.js';
 
 export const mat = (color, opts = {}) =>
-  new THREE.MeshStandardMaterial(Object.assign({ color, flatShading: true, roughness: 0.9 }, opts));
+  toon(Object.assign({ color, flatShading: true }, opts));
 
 export const mesh = (geo, material, cast = true, receive = true) => {
   const m = new THREE.Mesh(geo, material);

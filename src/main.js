@@ -12,6 +12,7 @@ import { createAudio } from './audio.js';
 import { createCrateFactory, TNT_RADIUS, BOUNCE_HITS } from './crates.js';
 import { createEnemies } from './enemies.js';
 import { createPlatforms } from './platforms.js';
+import { createHazards } from './hazards.js';
 import { proceduralLevel } from './level.js';
 import { loadGltfLevel } from './gltf-level.js';
 import { buildScenery } from './scenery.js';
@@ -22,6 +23,7 @@ import { wind } from './render/foliage.js';
 import { createPost } from './render/post.js';
 import { TIERS, guessTier, createFpsWatch } from './quality.js';
 import { createUI } from './ui.js';
+import { toon } from './render/toon.js';
 
 // Yield so the loading bar can paint; the timeout keeps loading going in a background tab
 const nextFrame = () => new Promise(r => { requestAnimationFrame(() => r()); setTimeout(r, 60); });
@@ -33,16 +35,17 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 
 const scene = new THREE.Scene();
 const FOG = 0xbfeaf5;
 scene.fog = new THREE.Fog(FOG, 55, 210);
 const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 900);
 
-const hemi = new THREE.HemisphereLight(0xdff4ff, 0x4a7a3a, 1.1);
+// Toon materials get no env-map fill, so the sky light carries the shadowed side
+const hemi = new THREE.HemisphereLight(0xdff4ff, 0x6a8a4a, 1.7);
 scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xfff0d0, 3.2);
+const sun = new THREE.DirectionalLight(0xfff0d0, 2.8);
 sun.castShadow = true;
 Object.assign(sun.shadow.camera, { left: -24, right: 24, top: 24, bottom: -24, near: 1, far: 100 });
 sun.shadow.bias = -0.0005;
@@ -62,7 +65,7 @@ const state = {
   hitStop: 0, simTime: 0, lastStep: 0
 };
 
-let level, settings, tierName, tier, post, rig, player, factory, enemies, platforms, scenery, sky, water, fruits, gem;
+let level, settings, tierName, tier, post, rig, player, factory, enemies, platforms, hazards, scenery, sky, water, fruits, gem;
 const ghosts = [];
 
 const ui = createUI({
@@ -152,7 +155,7 @@ async function load() {
   const textures = createTextures(256);
   ui.setLoading(0.25, 'Painting the sky…');
   await nextFrame();
-  sky = createSky(scene, renderer, rand);
+  sky = createSky(scene, rand);
   water = createWater(scene, { segments: tierName === 'low' ? 80 : 160 });
   ui.setLoading(0.4, 'Planting palms…');
   await nextFrame();
@@ -199,6 +202,14 @@ function buildEntities() {
     crumbleFall: pos => fx.dust(pos, 6, 0x9c8a74)
   });
 
+  hazards = createHazards(scene, level, {
+    logSpawn: run => { if (Math.abs(player.state.pos.z - run.from) < 30) audio.play('rumble', 0); },
+    ignite: v => {
+      const d = Math.hypot(player.state.pos.x - v.x, player.state.pos.z - v.z);
+      if (d < 14) audio.play('flame', panOf(v.x), 0.12 * (1 - d / 14));
+    }
+  });
+
   enemies = createEnemies(scene);
   level.enemySpots.forEach(e => enemies.add(e));
 
@@ -210,7 +221,7 @@ function buildEntities() {
   leafGeo.translate(0.03, 0.3, 0);
   const spots = level.fruitSpots;
   const fruitMesh = new THREE.InstancedMesh(fruitGeo,
-    new THREE.MeshStandardMaterial({ color: 0xff7a2f, roughness: 0.35, emissive: 0xff4a00, emissiveIntensity: 0.35 }), spots.length);
+    toon({ color: 0xff7a2f, emissive: 0xff4a00, emissiveIntensity: 0.35 }), spots.length);
   const leafMesh = new THREE.InstancedMesh(leafGeo, mat(0x3bb36a, { flatShading: false }), spots.length);
   fruitMesh.castShadow = true;
   for (const m of [fruitMesh, leafMesh]) { m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; scene.add(m); }
@@ -220,7 +231,7 @@ function buildEntities() {
   // Gem
   gem = new THREE.Mesh(
     new THREE.OctahedronGeometry(0.7, 0),
-    new THREE.MeshStandardMaterial({ color: 0x7fd3ff, emissive: 0x3a8bff, emissiveIntensity: 2.2, roughness: 0.1, metalness: 0.3 })
+    toon({ color: 0x7fd3ff, emissive: 0x3a8bff, emissiveIntensity: 2.2 })
   );
   gem.castShadow = true;
   gem.position.copy(level.gemPosition);
@@ -247,6 +258,7 @@ const playerEvents = {
     if (impact > 16) shake(0.15);
   },
   stomp(c) { hitCrate(c, 'stomp'); },
+  bonk(c) { hitCrate(c, 'bonk'); },
   spinStart() { audio.play('spin'); },
   spinning(p) {
     if (Math.random() < 0.6) fx.spinTrail(p);
@@ -267,24 +279,32 @@ const panOf = x => THREE.MathUtils.clamp((x - camera.position.x) / 8, -1, 1);
 function shake(a) { if (settings.shake) rig.shake(a); }
 function vibrate(ms) { if (settings.shake) navigator.vibrate?.(ms); }
 
-// Crates
+// Crates. `how` is 'stomp' (landed on top), 'bonk' (head from below) or 'spin'
 function hitCrate(c, how) {
   if (c.ghost || c.broken) return;
   const held = !!(keys.Space || ui.touchButtons.jump);
   switch (c.type) {
     case 'tnt':
-      if (how === 'stomp') { if (factory.lightFuse(c)) audio.play('tick'); player.bounce(PLAYER.crateBounce); }
-      else explodeTnt(c);
+      // Touching it lights the fuse; only a spin sets it off straight away
+      if (how === 'spin') explodeTnt(c);
+      else {
+        if (factory.lightFuse(c)) audio.play('tick');
+        if (how === 'stomp') player.bounce(PLAYER.crateBounce);
+      }
+      return;
+    case 'nitro':
+      explodeTnt(c);
       return;
     case 'bounce':
-      if (how === 'stomp') {
+      if (how === 'spin') breakCrate(c);
+      else {
         c.hits++;
         factory.poke(c);
         addFruit(1, c.group.position);
         audio.play('bounce');
-        player.bounce(held ? PLAYER.springBounce : PLAYER.springBounce * 0.85);
+        if (how === 'stomp') player.bounce(held ? PLAYER.springBounce : PLAYER.springBounce * 0.85);
         if (c.hits >= BOUNCE_HITS) breakCrate(c);
-      } else breakCrate(c);
+      }
       return;
     case 'activator':
       factory.poke(c);
@@ -342,11 +362,23 @@ function explodeTnt(c) {
   for (const o of world.crates) {
     if (o.broken || o.ghost || o === c) continue;
     if (Math.hypot(o.x - c.x, o.z - c.z) < TNT_RADIUS * 0.6 && Math.abs(o.base - c.base) < 1.5) {
-      if (o.type === 'tnt') explodeTnt(o);
+      if (o.type === 'tnt' || o.type === 'nitro') explodeTnt(o);
       else if (o.type !== 'activator') breakCrate(o);
     }
   }
   for (const e of enemies.list) if (e.alive && e.root.position.distanceTo(c.group.position) < TNT_RADIUS) defeatEnemy(e);
+}
+
+// Logs, fire vents, and nitro crates, which go off when touched from any side
+function checkHazards() {
+  const p = player.state.pos;
+  const hit = hazards.touching(p, PLAYER.radius);
+  if (hit && player.hurt(hit.x, hit.z)) loseFruit();
+  for (const c of world.crates) {
+    if (c.type !== 'nitro' || !c.solid || c.broken) continue;
+    const reach = 0.5 + PLAYER.radius + 0.05;
+    if (Math.abs(p.x - c.x) < reach && Math.abs(p.z - c.z) < reach && p.y < c.top + 0.05 && p.y + PLAYER.height > c.base) explodeTnt(c);
+  }
 }
 
 // Enemies
@@ -443,9 +475,11 @@ function simulate(dt) {
   state.simTime += dt;
   state.playTime += dt;
   platforms.update(dt, state.simTime);
+  hazards.update(state.simTime);
   player.update(dt, readInput());
   enemies.update(dt);
   checkEnemies();
+  checkHazards();
   collectFruit();
   const { exploded, ticked } = factory.update(dt, state.simTime);
   if (ticked) audio.play('tick');
@@ -490,6 +524,7 @@ function updateFruit(dt) {
 }
 
 // Loop
+const MAX_STEP = 1 / 120;
 const clock = new THREE.Clock();
 let t = 0;
 function frame() {
@@ -501,12 +536,18 @@ function frame() {
 
   const playing = ui.mode === 'playing' && !ui.paused && !state.done;
   if (playing) {
-    if (state.hitStop > 0) state.hitStop -= dt;
-    else simulate(dt);
+    // Gameplay runs in equal sub-steps of at most MAX_STEP, so jump arcs and
+    // collisions come out the same at 30 fps and 144 fps
+    const n = Math.ceil(dt / MAX_STEP - 1e-6), h = dt / n;
+    for (let i = 0; i < n; i++) {
+      if (state.hitStop > 0) state.hitStop -= h;
+      else simulate(h);
+    }
   } else if (!ui.paused) {
     // Keep the world alive behind menus
     state.simTime += dt;
     platforms.update(dt, state.simTime);
+    hazards.update(state.simTime);
     enemies.update(dt);
     factory.update(dt, state.simTime);
     player.sync(dt);

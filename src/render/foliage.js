@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { toon } from './toon.js';
 
 // Shared wind uniform so grass, bushes and palm leaves sway together
 export const wind = { uTime: { value: 0 }, uStrength: { value: 1 } };
@@ -56,7 +57,7 @@ function bladeGeometry() {
 // place(rand) returns {x, y, z} or null to skip
 export function createGrass(scene, count, place, rand) {
   if (!count) return null;
-  const mat = addWind(new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.9 }),
+  const mat = addWind(toon({ vertexColors: true, side: THREE.DoubleSide }),
     { amount: 0.14, height: 0.75, instanced: true });
   const mesh = new THREE.InstancedMesh(bladeGeometry(), mat, count);
   mesh.receiveShadow = true;
@@ -81,7 +82,7 @@ export function createFlowers(scene, count, place, rand) {
   if (!count) return null;
   const geo = new THREE.OctahedronGeometry(0.09, 0);
   geo.translate(0, 0.35, 0);
-  const mat = addWind(new THREE.MeshStandardMaterial({ roughness: 0.6 }), { amount: 0.08, height: 0.4, instanced: true });
+  const mat = addWind(toon(), { amount: 0.08, height: 0.4, instanced: true });
   const mesh = new THREE.InstancedMesh(geo, mat, count);
   const colors = [0xff6f91, 0xffd23f, 0xffffff, 0xc77dff].map(c => new THREE.Color(c));
   const m = new THREE.Matrix4();

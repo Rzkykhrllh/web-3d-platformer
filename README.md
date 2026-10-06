@@ -63,7 +63,7 @@ The built-in level is described in `src/level.js`. A level can also be built in 
 | `CRATE_basic`, `CRATE_bonus`, `CRATE_tnt`, `CRATE_bounce`, `CRATE_checkpoint`, `CRATE_activator`, `CRATE_metal` | Crate standing on this point (use an Empty) | `content` (an id from `content.js`), `ghost` (bool) |
 | `FRUIT` | A fruit at this point | |
 | `ENEMY` | Crab patrolling sideways around this point | `range`, `speed` |
-| `MOVER` | Moving platform (the mesh itself moves) | `axis` (`x` or `z`), `range`, `speed` |
+| `MOVER` | Moving platform (the mesh itself moves) | `axis` (`x`, `y` or `z`), `range`, `speed` |
 | `CRUMBLE` | Platform that falls after you land on it | |
 | `SPAWN` | Start point | |
 | `CHECKPOINT` | Extra respawn point | |

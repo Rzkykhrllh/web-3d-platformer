@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { toon } from './render/toon.js';
 
 // Pip, the placeholder runner. Faces +z by default.
 // Smooth shading plus an inverted-hull outline gives a cartoon read from far away.
@@ -7,7 +8,7 @@ export function createPip() {
   const body = new THREE.Group();
   root.add(body);
 
-  const smooth = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.45, ...extra });
+  const smooth = (color, extra = {}) => toon({ color, ...extra });
   const outlineMat = new THREE.MeshBasicMaterial({ color: 0x1d3a22, side: THREE.BackSide });
   const add = (geo, material, parent = body, outline = 0) => {
     const m = new THREE.Mesh(geo, material);
@@ -30,13 +31,13 @@ export function createPip() {
 
   // Cheeks
   [-1, 1].forEach(s => {
-    const cheek = add(new THREE.SphereGeometry(0.09, 12, 8), smooth(0xff9a8a, { roughness: 0.8 }));
+    const cheek = add(new THREE.SphereGeometry(0.09, 12, 8), smooth(0xff9a8a));
     cheek.scale.set(1, 0.6, 0.4);
     cheek.position.set(s * 0.36, 0.74, 0.5);
   });
 
-  const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
-  const black = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.1 });
+  const white = toon({ color: 0xffffff });
+  const black = toon({ color: 0x141414 });
   const shine = new THREE.MeshBasicMaterial({ color: 0xffffff });
   [-0.22, 0.22].forEach(ex => {
     const eye = add(new THREE.SphereGeometry(0.19, 20, 14), white, body, 0.08);

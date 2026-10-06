@@ -9,14 +9,19 @@ import * as THREE from 'three';
 //   step up    z -100         ledge you have to jump
 //   ruins A    z -100 .. -112
 //   gap 2      z -112 .. -130 a moving platform, then two crumbling ones
-//   ruins B    z -130 .. -180 metal crate stairs, TNT, gem on a pedestal
+//   ruins B    z -130 .. -176 metal crate stairs, TNT, a crate on the old pedestal
+//   log run    z -176 .. -202 logs roll out of the temple gate; jump them
+//   fire hall  z -202 .. -228 fire jets in a diagonal wave, nitro crates
+//   lift       z -228 .. -232 a platform rides up to the temple top
+//   temple top z -232 .. -256 gem on a pedestal
 
 export const PATH_HALF_WIDTH = 4.4;
 export const Z_START = 4;
-export const Z_END = -172;
+export const Z_END = -252;
+export const TEMPLE_TOP = 4.5;
 
 // Height of the main path at z, ignoring pillars and platforms
-export const pathTop = z => (z < -100 ? 1 : 0);
+export const pathTop = z => (z < -232 ? TEMPLE_TOP : z < -100 ? 1 : 0);
 
 // Static walkable boxes. `kind` picks the look in scenery.js.
 export const surfaces = [
@@ -25,8 +30,11 @@ export const surfaces = [
   { kind: 'stone', x0: -1.6, x1: 1.6, z0: -73,   z1: -68.5, top: 1.2 },
   { kind: 'sand',  x0: -4.5, x1: 4.5, z0: -100,  z1: -75,   top: 0 },
   { kind: 'dirt',  x0: -4.5, x1: 4.5, z0: -112,  z1: -100,  top: 1 },
-  { kind: 'dirt',  x0: -4.5, x1: 4.5, z0: -180,  z1: -130,  top: 1 },
-  { kind: 'stone', x0: -1.4, x1: 1.4, z0: -167,  z1: -163,  top: 1.6 }
+  { kind: 'dirt',  x0: -4.5, x1: 4.5, z0: -202,  z1: -130,  top: 1 },
+  { kind: 'stone', x0: -1.4, x1: 1.4, z0: -167,  z1: -163,  top: 1.6 },
+  { kind: 'stone', x0: -4.5, x1: 4.5, z0: -228,  z1: -202,  top: 1 },
+  { kind: 'stone', x0: -4.5, x1: 4.5, z0: -256,  z1: -232,  top: TEMPLE_TOP },
+  { kind: 'stone', x0: -1.4, x1: 1.4, z0: -250,  z1: -246,  top: TEMPLE_TOP + 0.6 }
 ];
 
 // Platforms that fall a moment after Pip lands on them, then come back
@@ -38,8 +46,27 @@ export const crumblers = [
 // Platforms that slide back and forth along `axis` by `range` from their rest position
 export const movers = [
   // Comes first, so you can wait on solid ground for it to line up
-  { x0: -1.5, x1: 1.5, z0: -117, z1: -114, top: 1.2, axis: 'x', range: 2.6, speed: 0.8 }
+  { x0: -1.5, x1: 1.5, z0: -117, z1: -114, top: 1.2, axis: 'x', range: 2.6, speed: 0.8 },
+  // Temple lift: bottom just under the hall floor, top just over the temple top
+  { x0: -1.5, x1: 1.5, z0: -231.6, z1: -228.4, top: 2.75, axis: 'y', range: 1.8, speed: 0.7 }
 ];
+
+// Logs roll from the temple gate toward the camera. Each lane is an x range;
+// the pattern repeats, one log every `every` seconds.
+export const logRun = {
+  from: -201, to: -177, speed: 5, every: 2.4, base: 1, radius: 0.55,
+  lanes: [[-4.4, 4.4], [-4.4, 0], [0, 4.4], [-4.4, 4.4], [0, 4.4], [-4.4, 0]]
+};
+
+// Fire jets: square vents in the floor. Each burns for `on` seconds out of
+// `period`, starting at `phase`; it glows for `warn` seconds before.
+// Rows are offset so the fire moves across the hall in a diagonal wave.
+export const fireJets = [];
+for (let r = 0; r < 4; r++) {
+  for (let c = 0; c < 3; c++) {
+    fireJets.push({ x: (c - 1) * 3, z: -206 - r * 5, base: 1, size: 2.4, period: 3, on: 1, warn: 0.6, phase: ((c + r) % 3) });
+  }
+}
 
 export const crateSpots = [
   { x: 0,    z: -9,   type: 'bonus', content: 'about' },
@@ -71,7 +98,23 @@ export const crateSpots = [
   { x: 0,    z: -150, type: 'tnt', content: 'contact' },
   { x: 1.5,  z: -150, type: 'basic' },
   { x: -2.5, z: -157, type: 'basic' },
-  { x: 2.5,  z: -157, type: 'basic', content: 'island' }
+  { x: 2.5,  z: -157, type: 'basic', content: 'island' },
+  // The old pedestal before the log run
+  { x: 0,    z: -165, type: 'bonus', base: 1.6 },
+  { x: 2.6,  z: -174, type: 'checkpoint' },
+  // Fire hall: crates between the vent rows, nitro where you'd dodge to
+  { x: -3.5, z: -208.5, type: 'basic' },
+  { x: 3.5,  z: -208.5, type: 'nitro' },
+  { x: 0,    z: -213.5, type: 'nitro' },
+  { x: 3.5,  z: -213.5, type: 'basic' },
+  { x: -3.5, z: -218.5, type: 'nitro' },
+  { x: 0,    z: -218.5, type: 'basic' },
+  { x: 3.5,  z: -225, type: 'checkpoint' },
+  { x: -3.5, z: -225, type: 'tnt' },
+  // Temple top
+  { x: -3,   z: -238, type: 'basic' },
+  { x: 3,    z: -238, type: 'basic' },
+  { x: -3,   z: -242, type: 'bounce' }
 ];
 
 export const enemySpots = [
@@ -80,13 +123,14 @@ export const enemySpots = [
   { x0: -3.4, x1: 0.5, z: -155, y: 1, speed: 2.4 }
 ];
 
-export const gemPosition = new THREE.Vector3(0, 3.1, -165);
+export const gemPosition = new THREE.Vector3(0, TEMPLE_TOP + 2.1, -248);
 
 // Fallback respawn points; checkpoint crates add their own
 export const checkpoints = [
   new THREE.Vector3(0, 0, 2),
   new THREE.Vector3(0, 0, -77),
-  new THREE.Vector3(0, 1, -132)
+  new THREE.Vector3(0, 1, -132),
+  new THREE.Vector3(0, 1, -176)
 ];
 
 export function fruitSpots() {
@@ -114,6 +158,15 @@ export function fruitSpots() {
   arc([[3, 5.4, -144], [3, 5.6, -146], [3, 5.4, -148], [2, 5.0, -150]]);
   line(-2.5, -138, -143, 4);
   line(0, -153, -160, 4);
+  // Over the log run, at jump height
+  line(0, -182, -198, 5, 2);
+  // Over the fire vents, for the brave
+  line(-3.5, -211, -211, 1); line(0, -216, -216, 1); line(3.5, -221, -221, 1);
+  // Up the lift
+  arc([[0, 3, -230], [0, 4.5, -230], [0, 6, -230]]);
+  // Reward for the bounce crate on the temple top
+  arc([[-3, 8.6, -241.2], [-3, 9.6, -242], [-3, 8.6, -242.8]]);
+  line(0, -236, -244, 4);
   return spots;
 }
 
@@ -130,7 +183,7 @@ export function proceduralLevel() {
   return {
     source: 'procedural',
     surfaces: surfaces.map(s => ({ ...s })),
-    crumblers, movers, crateSpots, enemySpots,
+    crumblers, movers, crateSpots, enemySpots, logRun, fireJets,
     fruitSpots: fruitSpots(),
     gemPosition: gemPosition.clone(),
     checkpoints: checkpoints.map(c => c.clone()),

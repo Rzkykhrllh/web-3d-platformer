@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { canvasTexture } from './util.js';
+import { toon } from './render/toon.js';
 
 // Crate types
 //  basic       breaks on stomp or spin
 //  bonus       "?" crate, same as basic, usually holds content
-//  tnt         stomp lights a 3 s fuse, spin blows it up at once
+//  tnt         stomp or bonk lights a 3 s fuse, spin blows it up at once
+//  nitro       blows up the moment anything touches it; doesn't count toward the total
 //  bounce      stomp bounces Pip high and drops fruit, breaks after 5 bounces or a spin
 //  checkpoint  breaking it moves the respawn point here
 //  activator   "!" crate, unbreakable; hitting it turns ghost crates solid
@@ -91,6 +93,10 @@ const textureDraw = {
     label(ctx, s, 'C', 140, '#ffffff', '#1d5f86');
   },
   activator: (ctx, s) => { metalFace(ctx, s, ['#64c06a', '#2f8a3f'], '#c9d6cc'); label(ctx, s, '!', 150, '#ffffff', '#1f5e2a'); },
+  nitro: (ctx, s) => {
+    metalFace(ctx, s, ['#5fd35a', '#23862a'], '#b6f5a8');
+    label(ctx, s, 'NITRO', 62, '#eaffde', '#145a1a');
+  },
   metal: (ctx, s) => {
     metalFace(ctx, s, ['#aab4bd', '#6c7781'], '#d6dde3');
     ctx.strokeStyle = 'rgba(40,50,60,.45)'; ctx.lineWidth = 10;
@@ -98,7 +104,7 @@ const textureDraw = {
   }
 };
 
-const chipColor = { basic: 0xc98b4a, bonus: 0xc98b4a, tnt: 0xd8452b, bounce: 0xc98b4a, checkpoint: 0x3fa7e0 };
+const chipColor = { basic: 0xc98b4a, bonus: 0xc98b4a, tnt: 0xd8452b, nitro: 0x4ccf4a, bounce: 0xc98b4a, checkpoint: 0x3fa7e0 };
 
 export function createCrateFactory(scene, world, fx) {
   const geo = new RoundedBoxGeometry(1, 1, 1, 3, 0.07);
@@ -106,10 +112,7 @@ export function createCrateFactory(scene, world, fx) {
   const outlineMat = new THREE.MeshBasicMaterial({ color: 0x2b1a0f, side: THREE.BackSide });
   const mats = {};
   for (const [k, draw] of Object.entries(textureDraw)) {
-    const metal = k === 'metal' || k === 'activator';
-    mats[k] = new THREE.MeshStandardMaterial({
-      map: canvasTexture(S, draw), roughness: metal ? 0.5 : 0.75, metalness: metal ? 0.25 : 0
-    });
+    mats[k] = toon({ map: canvasTexture(S, draw) });
   }
   const ghostMat = new THREE.MeshBasicMaterial({ color: 0x9fe3ff, wireframe: true, transparent: true, opacity: 0.55 });
 
@@ -199,6 +202,12 @@ export function createCrateFactory(scene, world, fx) {
     for (const c of crates) {
       if (c.broken) continue;
       if (c.ghost) { c.body.material.opacity = 0.35 + Math.sin(t * 4 + c.x) * 0.15; continue; }
+      if (c.type === 'nitro') {
+        // Restless little hops, so it reads as dangerous from a distance
+        const hop = Math.max(0, Math.sin(t * 5 + c.x * 1.7 + c.z)) ** 8;
+        c.group.position.y = c.base + 0.5 + hop * 0.12;
+        c.group.rotation.y = hop * 0.08 * Math.sin(t * 31);
+      }
       if (c.wobble > 0) {
         c.wobble = Math.max(0, c.wobble - dt * 4);
         const w = Math.sin(c.wobble * Math.PI * 3) * c.wobble * 0.25;

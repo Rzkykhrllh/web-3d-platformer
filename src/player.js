@@ -105,6 +105,9 @@ export function createPlayer(scene, world, events, createModel = createPip) {
       s.vel.z = approach(s.vel.z, tz, accel);
     }
 
+    // Something solid appeared around us: step out of it before moving
+    world.pushOut(p, P.radius, P.height);
+
     // Move one axis at a time so walls slide instead of stick
     const nx = p.x + s.vel.x * dt;
     if (!world.blocked(nx, p.z, p.y, P.radius, P.step)) p.x = nx; else s.vel.x = 0;
@@ -143,11 +146,17 @@ export function createPlayer(scene, world, events, createModel = createPip) {
     else if (s.jumping && !s.jumpHeld) g *= P.releaseGravityMul;
     // A spin in the air hangs for a moment, like the original games
     if (s.spin > 0 && s.vel.y < 0) g *= 0.35;
+    const prevY = p.y, prevVy = s.vel.y;
     s.vel.y = Math.max(-P.maxFall, s.vel.y - g * dt);
-
-    const prevY = p.y;
-    p.y += s.vel.y * dt;
+    // Average of old and new speed: exact for constant gravity, so the arc doesn't depend on dt
+    p.y += (prevVy + s.vel.y) * 0.5 * dt;
     if (s.vel.y <= 0) s.jumping = false;
+
+    // Head-butting a crate from below breaks it and ends the rise
+    if (s.vel.y > 0) {
+      const c = world.crateAbove(p.x, p.z, prevY + P.height, p.y + P.height);
+      if (c) { p.y = c.base - P.height; s.vel.y = 0; s.jumping = false; events.bonk?.(c); }
+    }
 
     // Landing on a crate
     if (s.vel.y < 0) {

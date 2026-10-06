@@ -89,6 +89,10 @@ export function createAudio() {
       tone({ type: 'sine', from: 1300, dur: 0.3, vol: 0.06 });
     },
     tick: () => tone({ type: 'square', from: 1200, dur: 0.06, vol: 0.08 }),
+    // Fire vent igniting; quiet, since several go off at once
+    flame: (pan, vol = 0.12) => hiss({ dur: 0.7, vol, from: 700, to: 250, pan }),
+    // Log rolling out of the gate
+    rumble: pan => tone({ type: 'triangle', from: 70, to: 45, dur: 0.5, vol: 0.18, pan }),
     boom: pan => {
       hiss({ dur: 1.2, vol: 0.7, from: 1800, to: 80, pan });
       tone({ type: 'sine', from: 90, to: 30, dur: 0.8, vol: 0.6, pan });

@@ -1,7 +1,9 @@
 import * as THREE from 'three';
+import { toon } from './toon.js';
 
-// Procedural, tileable textures (color + normal map) drawn on a canvas at startup.
-// Placeholders until real texture sets (e.g. from ambientCG / Poly Haven) are added.
+// Procedural, tileable color textures drawn on a canvas at startup. The noise is
+// posterized into a few flat bands for a painted, cartoon look (no normal maps).
+// Placeholders until hand-painted stylized textures are added.
 
 function rng(seed) {
   return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
@@ -52,22 +54,6 @@ function toTexture(size, fill, srgb) {
   return tex;
 }
 
-function normalFrom(height, size, strength) {
-  return toTexture(size, d => {
-    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-      const h = (xx, yy) => height[((yy + size) % size) * size + ((xx + size) % size)];
-      const dx = (h(x + 1, y) - h(x - 1, y)) * strength;
-      const dy = (h(x, y + 1) - h(x, y - 1)) * strength;
-      const len = Math.hypot(dx, dy, 1);
-      const i = (y * size + x) * 4;
-      d[i] = (-dx / len * 0.5 + 0.5) * 255;
-      d[i + 1] = (dy / len * 0.5 + 0.5) * 255;
-      d[i + 2] = (1 / len * 0.5 + 0.5) * 255;
-      d[i + 3] = 255;
-    }
-  }, false);
-}
-
 // Blend between colors by a 0..1 value
 function ramp(stops, t) {
   t = Math.min(1, Math.max(0, t));
@@ -82,20 +68,20 @@ function ramp(stops, t) {
 }
 const hex = h => [(h >> 16) & 255, (h >> 8) & 255, h & 255];
 
-function make(size, seed, { cells, octaves, ridged, stops, speckle = 0, speckleColor, normal = 4, extra }) {
+function make(size, seed, { cells, octaves, ridged, stops, speckle = 0, speckleColor, bands = 5, extra }) {
   const rand = rng(seed);
   const h = fbm(size, cells, octaves, rand, ridged);
   const fine = tileNoise(size, size / 4, rand);
   if (extra) extra(h, size, rand);
   const map = toTexture(size, d => {
     for (let i = 0; i < h.length; i++) {
-      let [r, g, b] = ramp(stops, h[i] + (fine[i] - 0.5) * 0.12);
+      const v = h[i] + (fine[i] - 0.5) * 0.12;
+      let [r, g, b] = ramp(stops, Math.round(v * bands) / bands);
       if (speckle && rand() < speckle) [r, g, b] = speckleColor;
       d[i * 4] = r; d[i * 4 + 1] = g; d[i * 4 + 2] = b; d[i * 4 + 3] = 255;
     }
   }, true);
-  const combined = h.map((v, i) => v + fine[i] * 0.15);
-  return { map, normalMap: normalFrom(combined, size, normal) };
+  return { map };
 }
 
 export function createTextures(size = 256) {
@@ -104,7 +90,7 @@ export function createTextures(size = 256) {
     sand: make(size, 11, {
       cells: 4, octaves: 4,
       stops: [[0, hex(0xc4924c)], [0.45, hex(0xdcb06a)], [0.75, hex(0xe9c886)], [1, hex(0xf5dca6)]],
-      speckle: 0.025, speckleColor: hex(0x9c7442), normal: 6,
+      speckle: 0.025, speckleColor: hex(0x9c7442),
       extra(h, s) {
         for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
           const i = y * s + x;
@@ -116,23 +102,21 @@ export function createTextures(size = 256) {
     dirt: make(size, 23, {
       cells: 4, octaves: 4,
       stops: [[0, hex(0x8f6740)], [0.55, hex(0xb58a58)], [1, hex(0xc9a06c)]],
-      speckle: 0.03, speckleColor: hex(0x6e5135), normal: 5
+      speckle: 0.03, speckleColor: hex(0x6e5135)
     }),
     grass: make(size, 37, {
       cells: 3, octaves: 5,
       stops: [[0, hex(0x2f7f3a)], [0.45, hex(0x4a9e45)], [0.8, hex(0x6bb84f)], [1, hex(0x8fca5c)]],
-      speckle: 0.015, speckleColor: hex(0xe7e27a), normal: 3
+      speckle: 0.015, speckleColor: hex(0xe7e27a)
     }),
     rock: make(size, 51, {
       cells: 3, octaves: 5, ridged: true,
-      stops: [[0, hex(0x5f554c)], [0.5, hex(0x857a6e)], [0.85, hex(0xa0968a)], [1, hex(0xb8ae9f)]],
-      normal: 9
+      stops: [[0, hex(0x5f554c)], [0.5, hex(0x857a6e)], [0.85, hex(0xa0968a)], [1, hex(0xb8ae9f)]]
     }),
     // Stone blocks: noise plus darker mortar lines
     stone: make(size, 67, {
       cells: 4, octaves: 4,
       stops: [[0, hex(0x6c6258)], [0.5, hex(0x8c8174)], [1, hex(0xa69a8a)]],
-      normal: 7,
       extra(h, s) {
         const rows = 4, cols = 2;
         for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
@@ -149,9 +133,8 @@ export function createTextures(size = 256) {
 
 // Material helper with world-size tiling
 export function texturedMaterial(set, repeatX, repeatY, opts = {}) {
-  const map = set.map.clone(), normalMap = set.normalMap.clone();
+  const map = set.map.clone();
   map.repeat.set(repeatX, repeatY);
-  normalMap.repeat.set(repeatX, repeatY);
-  map.needsUpdate = normalMap.needsUpdate = true;
-  return new THREE.MeshStandardMaterial(Object.assign({ map, normalMap, roughness: 0.92 }, opts));
+  map.needsUpdate = true;
+  return toon(Object.assign({ map }, opts));
 }

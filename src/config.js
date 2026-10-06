@@ -2,6 +2,7 @@
 
 export const PLAYER = {
   radius: 0.4,
+  height: 1.4,           // head height, for bonking crates from below
   step: 0.35,            // highest ledge Pip walks up without jumping
   runSpeed: 8,
   accelGround: 55,

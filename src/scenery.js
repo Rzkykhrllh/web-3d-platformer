@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import { surfaces, pathTop, Z_START } from './level.js';
+import { surfaces, pathTop, Z_START, TEMPLE_TOP } from './level.js';
 import { texturedMaterial } from './render/textures.js';
 import { addWind, createGrass, createFlowers } from './render/foliage.js';
 import { canvasTexture } from './util.js';
+import { toon } from './render/toon.js';
 
 // Everything you see but can't collide with: terrain, cliffs, plants, ruins.
 
@@ -18,10 +19,10 @@ function noise2(x, z) {
 const fbm2 = (x, z) => noise2(x, z) * 0.6 + noise2(x * 2.1, z * 2.1) * 0.3 + noise2(x * 4.3, z * 4.3) * 0.1;
 const smooth = (a, b, t) => { const k = Math.min(1, Math.max(0, (t - a) / (b - a))); return k * k * (3 - 2 * k); };
 
-const Z_BACK = 26, Z_FAR = -190, BANK_W = 26, EDGE = 4.5;
+const Z_BACK = 26, Z_FAR = -272, BANK_W = 26, EDGE = 4.5;
 
-// Ground level of the path region, smoothed across the step at z = -100
-const baseAt = z => smooth(-98.5, -101.5, z);
+// Ground level of the path region, smoothed across the steps at z = -100 and the temple top
+const baseAt = z => smooth(-98.5, -101.5, z) + smooth(-229, -235, z) * (TEMPLE_TOP - 1);
 
 // Height of the jungle banks either side of the path
 export function bankHeight(x, z) {
@@ -142,9 +143,9 @@ export function buildScenery(scene, { textures, quality, rand }) {
   const mats = {
     sand: texturedMaterial(textures.sand, 1, 1),
     dirt: texturedMaterial(textures.dirt, 1, 1),
-    stone: texturedMaterial(textures.stone, 1, 1, { roughness: 0.85 }),
-    rock: texturedMaterial(textures.rock, 1, 1, { roughness: 0.95 }),
-    grass: texturedMaterial(textures.grass, 1, 1, { roughness: 1 })
+    stone: texturedMaterial(textures.stone, 1, 1),
+    rock: texturedMaterial(textures.rock, 1, 1),
+    grass: texturedMaterial(textures.grass, 1, 1)
   };
   const animated = [];
 
@@ -162,7 +163,7 @@ export function buildScenery(scene, { textures, quality, rand }) {
 
   // Jungle banks: height-field hills either side
   [-1, 1].forEach(side => {
-    const xs = 34, zs = 150, pos = [], uv = [], idx = [];
+    const xs = 34, zs = 210, pos = [], uv = [], idx = [];
     for (let j = 0; j <= zs; j++) {
       const z = Z_BACK + (Z_FAR - Z_BACK) * (j / zs);
       for (let i = 0; i <= xs; i++) {
@@ -186,7 +187,7 @@ export function buildScenery(scene, { textures, quality, rand }) {
     scene.add(m);
 
     // Rocky cliff face between bank edge and the path / ravine floor
-    const ys = 8, zs2 = 220, cp = [], cuv = [], cidx = [];
+    const ys = 8, zs2 = 320, cp = [], cuv = [], cidx = [];
     for (let j = 0; j <= zs2; j++) {
       const z = Z_BACK + (Z_FAR - Z_BACK) * (j / zs2);
       const topY = bankHeight(side * EDGE, z);
@@ -219,10 +220,10 @@ export function buildScenery(scene, { textures, quality, rand }) {
   scene.add(back);
 
   // Palms, instanced per shape
-  const frondMat = addWind(new THREE.MeshStandardMaterial({
-    map: frondTexture(), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.8
+  const frondMat = addWind(toon({
+    map: frondTexture(), alphaTest: 0.5, side: THREE.DoubleSide
   }), { amount: 0.25, height: 3.4, instanced: true, radial: true });
-  const trunkMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
+  const trunkMat = toon({ vertexColors: true });
   const variants = [palmVariant(7, 0.35, rand), palmVariant(8.5, 0.55, rand), palmVariant(6, 0.2, rand)];
   const palmSpots = [];
   for (let z = Z_BACK - 4; z > Z_FAR + 6; z -= 2.6) {
@@ -259,7 +260,7 @@ export function buildScenery(scene, { textures, quality, rand }) {
     bushParts.push(g);
   }
   const bushGeo = gradientColors(mergeGeometries(bushParts), 0x23602c, 0x5fae4b, -0.4, 1);
-  const bushMat = addWind(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }), { amount: 0.05, height: 1.2, instanced: true });
+  const bushMat = addWind(toon({ vertexColors: true }), { amount: 0.05, height: 1.2, instanced: true });
   const bushSpots = [];
   for (let z = Z_BACK - 2; z > Z_FAR + 4; z -= 1.3) {
     [-1, 1].forEach(sx => {
@@ -339,7 +340,8 @@ export function buildScenery(scene, { textures, quality, rand }) {
 
   // Stone arches over the path
   const archStone = mats.stone;
-  [[-30, 0], [-93, 0], [-134, 1], [-160, 1]].forEach(([z, base]) => {
+  // The one at -201 is the temple gate the logs roll out of
+  [[-30, 0], [-93, 0], [-134, 1], [-160, 1], [-201, 1], [-253, TEMPLE_TOP]].forEach(([z, base]) => {
     [-1, 1].forEach(sx => {
       const pillar = new THREE.Mesh(boxWorldUV(new THREE.BoxGeometry(1.3, 6.4, 1.3), 1.3, 6.4, 1.3, 0.5), archStone);
       pillar.position.set(sx * 5.3, base + 3.2, z);
@@ -353,14 +355,14 @@ export function buildScenery(scene, { textures, quality, rand }) {
     lintel.position.set(0, base + 6.9, z);
     lintel.castShadow = true;
     scene.add(lintel);
-    const moss = new THREE.Mesh(displace(new THREE.BoxGeometry(12.8, 0.35, 1.8, 16, 1, 2), 0.06), new THREE.MeshStandardMaterial({ color: 0x3f8a42, roughness: 1 }));
+    const moss = new THREE.Mesh(displace(new THREE.BoxGeometry(12.8, 0.35, 1.8, 16, 1, 2), 0.06), toon({ color: 0x3f8a42 }));
     moss.position.set(0, base + 7.5, z);
     scene.add(moss);
   });
 
   // Broken columns in the ruins
-  for (let i = 0; i < 14; i++) {
-    const z = -102 - rand() * 74, sx = rand() < 0.5 ? -1 : 1;
+  for (let i = 0; i < 24; i++) {
+    const z = -102 - rand() * 150, sx = rand() < 0.5 ? -1 : 1;
     const x = sx * (5.6 + rand() * 6);
     const h = 1 + rand() * 3.5;
     const col = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.62, h, 12), archStone);
@@ -373,9 +375,9 @@ export function buildScenery(scene, { textures, quality, rand }) {
   // Torches: emissive flames bright enough to bloom
   const flameMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 1.4, 0.4), toneMapped: false });
   const torches = [];
-  [[-4.9, -99], [4.9, -99], [-2.2, -162], [2.2, -162], [-4.9, -131], [4.9, -131]].forEach(([x, z]) => {
+  [[-4.9, -99], [4.9, -99], [-4.9, -131], [4.9, -131], [-4.9, -203], [4.9, -203], [-4.9, -227], [4.9, -227], [-2.2, -245], [2.2, -245]].forEach(([x, z]) => {
     const y = Math.max(pathTop(z), bankHeight(x, z) - 0.3);
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.8, 6), new THREE.MeshStandardMaterial({ color: 0x5e3a1a }));
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.8, 6), toon({ color: 0x5e3a1a }));
     pole.position.set(x, y + 0.9, z);
     pole.castShadow = true;
     const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.12, 0.25, 8), archStone);
@@ -387,9 +389,9 @@ export function buildScenery(scene, { textures, quality, rand }) {
   });
 
   // Tiki totems at the start
-  const totemMat = [0x8b4a24, 0xa8622f, 0x6b3a1c].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }));
-  const dark = new THREE.MeshStandardMaterial({ color: 0x1c120a });
-  const gold = new THREE.MeshStandardMaterial({ color: 0xffc93c, emissive: 0xff9a00, emissiveIntensity: 0.6 });
+  const totemMat = [0x8b4a24, 0xa8622f, 0x6b3a1c].map(c => toon({ color: c }));
+  const dark = toon({ color: 0x1c120a });
+  const gold = toon({ color: 0xffc93c, emissive: 0xff9a00, emissiveIntensity: 0.6 });
   [[-6.2, -3], [6.2, -3]].forEach(([x, z], ti) => {
     const g = new THREE.Group();
     for (let i = 0; i < 3; i++) {
@@ -407,7 +409,7 @@ export function buildScenery(scene, { textures, quality, rand }) {
       mouth.position.set(0, 0.42 + i * 1.35, 0.8);
       g.add(mouth);
     }
-    const crown = new THREE.Mesh(new THREE.ConeGeometry(1.05, 1.1, 10), new THREE.MeshStandardMaterial({ color: 0x2e9e5b }));
+    const crown = new THREE.Mesh(new THREE.ConeGeometry(1.05, 1.1, 10), toon({ color: 0x2e9e5b }));
     crown.position.y = 4.65;
     g.add(crown);
     g.position.set(x, bankHeight(x, z) - 0.3, z);
@@ -423,9 +425,9 @@ export function buildScenery(scene, { textures, quality, rand }) {
   const lava = new THREE.Mesh(new THREE.CylinderGeometry(6.4, 7, 0.8, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 1.1, 0.3), toneMapped: false }));
   lava.position.y = 45.8;
   volcano.add(lava);
-  volcano.position.set(-30, -8, -280);
+  volcano.position.set(-30, -8, -340);
   scene.add(volcano);
-  const smokeMat = new THREE.MeshStandardMaterial({ color: 0x8a8580, transparent: true, opacity: 0.7, roughness: 1 });
+  const smokeMat = toon({ color: 0x8a8580, transparent: true, opacity: 0.7 });
   const smoke = [];
   for (let i = 0; i < 9; i++) {
     const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(4, 1), smokeMat.clone());
@@ -445,7 +447,7 @@ export function buildScenery(scene, { textures, quality, rand }) {
       for (const p of smoke) {
         p.userData.t = (p.userData.t + dt * 0.05) % 1;
         const k = p.userData.t;
-        p.position.set(-30 + Math.sin(k * 4) * 4 + k * 16, 40 + k * 45, -280);
+        p.position.set(-30 + Math.sin(k * 4) * 4 + k * 16, 40 + k * 45, -340);
         p.scale.setScalar(0.6 + k * 2.2);
         p.material.opacity = 0.7 * (1 - k);
       }

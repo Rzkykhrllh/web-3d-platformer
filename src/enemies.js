@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { mat, mesh } from './util.js';
+import { toon } from './render/toon.js';
 
 // Crabs patrol back and forth along x. Stomp or spin to defeat; touching one hurts.
 
 function crabModel() {
   const g = new THREE.Group();
-  const shell = mat(0xe8553a, { flatShading: false, roughness: 0.5 });
-  const dark = mat(0xb63a24, { flatShading: false, roughness: 0.6 });
+  const shell = mat(0xe8553a, { flatShading: false });
+  const dark = mat(0xb63a24, { flatShading: false });
   const body = mesh(new THREE.SphereGeometry(0.5, 20, 14), shell);
   body.scale.set(1.2, 0.6, 0.9); body.position.y = 0.42;
   g.add(body);
@@ -28,9 +29,9 @@ function crabModel() {
     const stalk = mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 6), dark);
     stalk.position.set(side * 0.18, 0.78, 0.2);
     g.add(stalk);
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 }));
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), toon({ color: 0xffffff }));
     eye.position.set(side * 0.18, 0.95, 0.22);
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), toon({ color: 0x111111 }));
     pupil.position.set(0, 0, 0.06);
     eye.add(pupil);
     g.add(eye);

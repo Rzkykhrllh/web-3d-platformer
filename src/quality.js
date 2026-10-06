@@ -3,7 +3,7 @@
 
 export const TIERS = {
   low:    { pixelRatio: 1,   shadows: false, shadowMap: 1024, post: false, grass: 0,     flowers: 0,   particles: 200 },
-  medium: { pixelRatio: 1.5, shadows: true,  shadowMap: 1024, post: true,  grass: 6000,  flowers: 150, particles: 400 },
+  medium: { pixelRatio: 1.5, shadows: true,  shadowMap: 1024, post: false, grass: 6000,  flowers: 150, particles: 400 },
   high:   { pixelRatio: 2,   shadows: true,  shadowMap: 2048, post: true,  grass: 16000, flowers: 400, particles: 600 }
 };
 const ORDER = ['low', 'medium', 'high'];
@@ -12,7 +12,8 @@ export function guessTier() {
   const coarse = window.matchMedia('(pointer: coarse)').matches;
   const cores = navigator.hardwareConcurrency || 4;
   if (coarse) return cores >= 8 ? 'medium' : 'low';
-  return cores >= 4 ? 'high' : 'medium';
+  // Never start on high; players can still pick it in settings
+  return 'medium';
 }
 
 // Watches frame times and calls onDrop(newTier) when the game can't keep up

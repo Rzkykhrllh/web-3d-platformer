@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { toon } from './toon.js';
 
-// Gradient sky dome with a soft sun glow, some puffy clouds, and an environment
-// map baked from the same sky so materials pick up matching reflections.
+// Gradient sky dome with a soft sun glow and some puffy clouds.
 
 export const SUN_DIR = new THREE.Vector3(0.45, 0.62, 0.35).normalize();
 
@@ -41,21 +41,13 @@ function skyMaterial() {
   });
 }
 
-export function createSky(scene, renderer, rand) {
+export function createSky(scene, rand) {
   const dome = new THREE.Mesh(new THREE.SphereGeometry(450, 32, 16), skyMaterial());
   dome.renderOrder = -1;
   scene.add(dome);
 
-  // Environment map from the sky alone
-  const envScene = new THREE.Scene();
-  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), skyMaterial()));
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const env = pmrem.fromScene(envScene, 0.04).texture;
-  pmrem.dispose();
-  scene.environment = env;
-
   // Clouds: clusters of smooth blobs, lit from the sun side
-  const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, emissive: 0xbfd8e8, emissiveIntensity: 0.35 });
+  const cloudMat = toon({ color: 0xffffff, emissive: 0xbfd8e8, emissiveIntensity: 0.35 });
   const clouds = [];
   for (let i = 0; i < 14; i++) {
     // Each cloud is one merged mesh, so it costs a single draw call

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { toon } from './render/toon.js';
 
 // Pooled particles drawn with one InstancedMesh per look:
 //  puff  - soft lit blobs for dust and smoke
@@ -62,11 +63,11 @@ function createPool(scene, geometry, material, max) {
 export function createParticles(scene, maxPerPool = 500) {
   const pools = {
     puff: createPool(scene, new THREE.IcosahedronGeometry(0.5, 1),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }), maxPerPool),
+      toon({ color: 0xffffff }), maxPerPool),
     spark: createPool(scene, new THREE.OctahedronGeometry(0.5, 0),
       new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), maxPerPool),
     chip: createPool(scene, new THREE.BoxGeometry(1, 0.25, 0.6),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }), maxPerPool)
+      toon({ color: 0xffffff }), maxPerPool)
   };
   const tmpV = new THREE.Vector3();
   const rnd = (a, b) => a + Math.random() * (b - a);
