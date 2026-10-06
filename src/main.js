@@ -63,7 +63,7 @@ const fx = particles.fx;
 const state = {
   started: false, done: false,
   fruit: 0, cratesBroken: 0, crateTotal: 0, crystal: false, gem: false, gemHintAt: -99,
-  dying: 0, detonations: [],
+  dying: 0, detonations: [], deaths: 0,
   checkpoint: new THREE.Vector3(), playTime: 0,
   hitStop: 0, simTime: 0, lastStep: 0
 };
@@ -467,7 +467,10 @@ function startGame() {
   audio.unlock();
 }
 
+// Falling off and dying to fire or explosions all end up here
 function respawn() {
+  state.deaths++;
+  ui.setDeaths(state.deaths);
   audio.play('fall');
   player.reset(state.checkpoint);
   ui.flash();
@@ -536,7 +539,7 @@ function finish() {
     secs: Math.round(state.playTime),
     fruit: state.fruit, fruitTotal: fruits.length + BOUNCE_HITS,
     crates: state.cratesBroken, crateTotal: state.crateTotal,
-    crystal: pickups.crystal ? state.crystal : null, gem: state.gem
+    crystal: pickups.crystal ? state.crystal : null, gem: state.gem, deaths: state.deaths
   });
 }
 

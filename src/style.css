@@ -112,6 +112,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .icon { width: 22px; height: 22px; display: inline-block; }
 .icon.fruit { background: var(--fruit); border-radius: 50% 50% 45% 45%; box-shadow: inset -3px -3px 0 rgba(0,0,0,.18); }
 .icon.crate { background: var(--crate); border: 3px solid #E9B06A; border-radius: 3px; }
+.icon.skull { fill: var(--cream); }
 /* Crystal and gem stay dim until collected */
 .treasure { padding: 6px 10px; gap: 6px; }
 .icon.crystal { width: 16px; height: 26px; background: linear-gradient(135deg, #ffb3ec, #ff4fcf 55%, #b0177e); clip-path: polygon(50% 0, 100% 40%, 50% 100%, 0 40%); }

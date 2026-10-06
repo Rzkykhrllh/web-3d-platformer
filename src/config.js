@@ -58,3 +58,10 @@ export const LEVEL_URL = null;
 // Player character: 'cat' (the rigged model in public/models/cat.glb, or the
 // procedural cat if it fails to load), 'cat-procedural' or 'pip'. ?char=... in the URL overrides it.
 export const CHARACTER = 'cat';
+
+// Game title on the menu and the browser tab
+export const GAME_NAME = "Airu's Island";
+
+// Portfolio content: cards when crates break, "See everything", the summary.
+// Off for now while the game itself gets built; the crates still count.
+export const SHOW_PORTFOLIO = false;

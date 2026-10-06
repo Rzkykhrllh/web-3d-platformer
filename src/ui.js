@@ -1,5 +1,6 @@
 import { items, itemById, profile } from './content.js';
 import { itemHTML } from './render-content.js';
+import { GAME_NAME, SHOW_PORTFOLIO } from './config.js';
 
 const $ = id => document.getElementById(id);
 const SETTINGS_KEY = 'island-settings';
@@ -21,9 +22,13 @@ export function createUI(handlers) {
   const overlayStack = [];
   let hintTimer = 0, toastTimer = 0;
 
-  document.title = `${profile.name}'s Island`;
-  $('menuTitle').textContent = `${profile.name}'s Island`;
-  $('menuRole').textContent = profile.role;
+  document.title = GAME_NAME;
+  $('menuTitle').textContent = GAME_NAME;
+  if (SHOW_PORTFOLIO) $('menuRole').textContent = profile.role;
+  else {
+    $('menuTag').textContent = 'Smash crates. Grab the crystal. Watch out for TNT.';
+    for (const id of ['menuRole', 'skipBtn', 'allBtn', 'pauseAllBtn', 'finishAllBtn']) $(id).hidden = true;
+  }
 
   const hud = $('hud'), corner = $('corner'), hint = $('hint'), touch = $('touch'), card = $('card');
 
@@ -88,7 +93,7 @@ export function createUI(handlers) {
   // Content card
   function showCard(id) {
     const item = itemById[id];
-    if (!item) return;
+    if (!item || !SHOW_PORTFOLIO) return;
     opened.add(id);
     $('cardBody').innerHTML = itemHTML(item);
     card.classList.remove('show');
@@ -193,7 +198,7 @@ export function createUI(handlers) {
     toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
   }
 
-  function showFinish({ secs, fruit, fruitTotal, crates, crateTotal, crystal, gem }) {
+  function showFinish({ secs, fruit, fruitTotal, crates, crateTotal, crystal, gem, deaths }) {
     mode = 'finished';
     hideCard();
     touch.hidden = true;
@@ -214,9 +219,10 @@ export function createUI(handlers) {
       ['Time', `${m ? m + ' min ' : ''}${s} sec`],
       ['Fruit', `${fruit} / ${fruitTotal}`],
       ['Crates', `${crates} / ${crateTotal}`],
+      ['Deaths', String(deaths)],
       ...(crystal === null ? [] : [['Power crystal', crystal ? 'Found' : 'Missed']]),
       ['Green gem', gem ? 'Found' : crates === crateTotal ? 'Left behind' : 'Locked'],
-      ['Portfolio found', `${found} / ${items.length}`]
+      ...(SHOW_PORTFOLIO ? [['Portfolio found', `${found} / ${items.length}`]] : [])
     ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
     setTimeout(() => {
       overlayStack.length = 0;
@@ -233,6 +239,7 @@ export function createUI(handlers) {
     get paused() { return overlayStack.length > 0; },
     setLoading, ready, showCard, hideCard, toast, showFinish,
     setFruit(n) { fruitEl.textContent = n; bump(fruitEl.parentElement); },
+    setDeaths(n) { $('deathCount').textContent = n; bump($('deathCount').parentElement); },
     setCrates(n, total) { crateEl.textContent = `${n} / ${total}`; if (n) bump(crateEl.parentElement); },
     // Crystal and gem icons: dim until collected; levels without a crystal hide its icon
     initPickups(hasCrystal) { $('crystalIcon').hidden = !hasCrystal; },

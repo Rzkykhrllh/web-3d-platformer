@@ -33,6 +33,7 @@
 <div class="hud" id="hud" aria-live="polite">
   <span class="stat"><span class="icon fruit" aria-hidden="true"></span><span id="fruitCount">0</span><span class="sr">fruit</span></span>
   <span class="stat"><span class="icon crate" aria-hidden="true"></span><span id="crateCount">0 / 0</span><span class="sr">crates</span></span>
+  <span class="stat"><svg class="icon skull" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.5 2 3 5.6 3 10.2c0 2.6 1.2 4.6 3 5.8V19a1 1 0 0 0 1 1h1.5v-2h2v2h3v-2h2v2H17a1 1 0 0 0 1-1v-3c1.8-1.2 3-3.2 3-5.8C21 5.6 17.5 2 12 2Zm-3.5 10.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm7 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/></svg><span id="deathCount">0</span><span class="sr">deaths</span></span>
   <span class="stat treasure" id="treasure">
     <span class="icon crystal" id="crystalIcon" role="img" aria-label="Power crystal: not found yet"></span>
     <span class="icon gem" id="gemIcon" role="img" aria-label="Green gem: locked"></span>
@@ -69,7 +70,7 @@
   <div class="title">
     <p class="eyebrow" id="menuRole"></p>
     <h1 id="menuTitle">Island</h1>
-    <p class="tag">Smash crates. Find my work. Watch out for TNT.</p>
+    <p class="tag" id="menuTag">Smash crates. Find my work. Watch out for TNT.</p>
   </div>
   <nav class="menu-actions">
     <button class="big" id="playBtn">Play</button>

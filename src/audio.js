@@ -3,7 +3,7 @@ import { AUDIO } from './config.js';
 // All sound effects are synthesised with Web Audio, so there are no files to load.
 // They are placeholders with the right timing and character; swap in recorded
 // samples later by replacing the matching function in `sfx`.
-// Music is a generated tropical loop unless AUDIO.musicUrl points at a file.
+// Music is a generated PS1-style jungle loop unless AUDIO.musicUrl points at a file.
 
 export function createAudio() {
   let ctx = null, master, sfxBus, musicBus, noise;
@@ -118,7 +118,10 @@ export function createAudio() {
     click: () => tone({ type: 'sine', from: 700, dur: 0.05, vol: 0.06 })
   };
 
-  // Generated music: marimba melody over a simple I-vi-IV-V loop, with bass and shaker
+  // Generated music in the spirit of PS1-era jungle levels: marimba lead,
+  // bongos and log drum, shaker, a plucky bass and a soft pad, in D dorian
+  // over Dm - C - Bb - C. It all goes through a lo-fi chain (big console-style
+  // reverb, top end rolled off) so it sounds like it came out of a 90s console.
   function startMusic() {
     if (!ctx || music) return;
     if (AUDIO.musicUrl) {
@@ -130,50 +133,113 @@ export function createAudio() {
       music = { stop: () => el.pause() };
       return;
     }
-    const bpm = 108, beat = 60 / bpm, step = beat / 2;
-    const chords = [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]];
-    const scale = [60, 62, 64, 67, 69, 72, 74, 76];
-    const hz = n => 440 * Math.pow(2, (n - 69) / 12);
-    let seed = 3;
-    const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-    // Fixed 4-bar melody so the loop feels composed rather than random
-    const melody = Array.from({ length: 32 }, (_, i) => (i % 4 === 3 || rand() < 0.25 ? null : scale[Math.floor(rand() * scale.length)]));
-    let next = ctx.currentTime + 0.1, i = 0;
 
-    function marimba(f, t, vol) {
-      const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain();
-      o.frequency.value = f; o2.frequency.value = f * 4; o2.type = 'sine';
-      const g2 = ctx.createGain(); g2.gain.value = 0.15;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(vol, t + 0.005);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
-      o.connect(g); o2.connect(g2).connect(g); g.connect(musicBus);
-      o.start(t); o2.start(t); o.stop(t + 0.5); o2.stop(t + 0.5);
+    // Lo-fi chain: dry + reverb, then a gentle low-pass
+    const input = ctx.createGain();
+    const tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = 9000; tone.Q.value = 0.4;
+    const reverb = ctx.createConvolver();
+    const len = Math.floor(ctx.sampleRate * 1.8), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const d = ir.getChannelData(c);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
     }
+    reverb.buffer = ir;
+    const wet = ctx.createGain(); wet.gain.value = 0.28;
+    input.connect(tone);
+    input.connect(reverb).connect(wet).connect(tone);
+    tone.connect(musicBus);
+
+    const bpm = 120, step = 60 / bpm / 4; // sixteenth notes
+    const hz = n => 440 * Math.pow(2, (n - 69) / 12);
+    const chords = [[62, 65, 69], [60, 64, 67], [58, 62, 65], [60, 64, 67]];
+    const roots = [38, 36, 34, 36];
+    const _ = null;
+    // Eight bars: a call (A) and an answer (B), 16 steps each
+    const lead = [
+      [69, _, 72, _, 74, _, 72, 69, _, 67, _, 69, _, _, _, _],
+      [67, _, 69, _, 72, _, 69, 67, _, 64, _, 67, _, _, _, _],
+      [65, _, 69, _, 70, _, 69, 65, _, 62, _, 65, _, 67, _, _],
+      [67, _, _, 64, _, 67, _, 72, _, 71, _, 72, _, _, _, _],
+      [74, 74, _, 72, _, 69, _, _, 72, _, 69, _, 67, _, 65, _],
+      [64, _, 67, _, 69, _, 72, _, 71, _, 69, _, 67, _, _, _],
+      [65, 65, _, 67, _, 69, _, _, 70, _, 69, _, 67, _, 65, _],
+      [67, _, _, _, 64, _, _, _, 62, _, _, _, _, _, _, _]
+    ];
+    const kick = [0, 6, 10], bongoHi = [3, 7, 11, 14, 15], bongoLo = [4, 12];
+    const bassSteps = { 0: 0, 3: 0, 6: 7, 8: 12, 11: 0, 14: 10 };
+
+    const env = (g, t, vol, attack, decay) => {
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+    };
+    function marimba(f, t, vol) {
+      const g = ctx.createGain(); env(g, t, vol, 0.004, 0.38); g.connect(input);
+      [[1, 1], [4, 0.12], [9.8, 0.04]].forEach(([mul, amt]) => {
+        const o = ctx.createOscillator(), a = ctx.createGain();
+        o.frequency.value = f * mul; a.gain.value = amt;
+        o.connect(a).connect(g); o.start(t); o.stop(t + 0.45);
+      });
+    }
+    function drum(f, t, vol, decay, drop = 1.6) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.setValueAtTime(f * drop, t);
+      o.frequency.exponentialRampToValueAtTime(f, t + 0.03);
+      env(g, t, vol, 0.002, decay);
+      o.connect(g).connect(input); o.start(t); o.stop(t + decay + 0.05);
+    }
+    function shaker(t, vol) {
+      const src = ctx.createBufferSource(); src.buffer = noise;
+      const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000;
+      const g = ctx.createGain(); env(g, t, vol, 0.003, 0.05);
+      src.connect(f).connect(g).connect(input);
+      src.start(t, Math.random()); src.stop(t + 0.08);
+    }
+    function bass(n, t) {
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 6;
+      f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(220, t + 0.18);
+      const g = ctx.createGain(); env(g, t, 0.16, 0.005, 0.24);
+      ['triangle', 'square'].forEach((type, k) => {
+        const o = ctx.createOscillator(), a = ctx.createGain();
+        o.type = type; o.frequency.value = hz(n); a.gain.value = k ? 0.35 : 1;
+        o.connect(a).connect(f); o.start(t); o.stop(t + 0.3);
+      });
+      f.connect(g).connect(input);
+    }
+    function pad(notes, t, dur) {
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1100;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.022, t + 0.35);
+      g.gain.linearRampToValueAtTime(0.0001, t + dur);
+      notes.forEach(n => [-7, 7].forEach(cents => {
+        const o = ctx.createOscillator(); o.type = 'sawtooth';
+        o.frequency.value = hz(n); o.detune.value = cents;
+        o.connect(f); o.start(t); o.stop(t + dur + 0.05);
+      }));
+      f.connect(g).connect(input);
+    }
+
+    let next = ctx.currentTime + 0.1, i = 0;
     function schedule() {
       // After a suspend, skip ahead instead of firing every missed note at once
       if (next < ctx.currentTime - 0.1) next = ctx.currentTime + 0.05;
       while (next < ctx.currentTime + 0.2) {
-        const bar = Math.floor(i / 8) % 4, chord = chords[bar], s = i % 8;
-        const m = melody[i % 32];
-        if (m) marimba(hz(m + 12), next, 0.09);
-        if (s === 0 || s === 4) marimba(hz(chord[0] - 24), next, 0.16);
-        if (s === 2 || s === 6) chord.forEach(n => marimba(hz(n), next, 0.035));
-        // shaker on every off-beat
-        if (s % 2 === 1) {
-          const src = ctx.createBufferSource(); src.buffer = noise;
-          const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 6000;
-          const g = ctx.createGain();
-          g.gain.setValueAtTime(0.05, next); g.gain.exponentialRampToValueAtTime(0.0001, next + 0.06);
-          src.connect(f).connect(g).connect(musicBus);
-          src.start(next, Math.random()); src.stop(next + 0.08);
-        }
+        const bar = Math.floor(i / 16) % 8, s = i % 16, chord = bar % 4;
+        if (s === 0) pad(chords[chord], next, step * 16);
+        const m = lead[bar][s];
+        if (m) marimba(hz(m + 12), next, 0.085);
+        if (s in bassSteps) bass(roots[chord] + bassSteps[s], next);
+        if (kick.includes(s)) drum(58, next, 0.32, 0.28, 2.4);
+        if (bongoHi.includes(s)) drum(330, next, 0.1, 0.11);
+        if (bongoLo.includes(s)) drum(220, next, 0.12, 0.14);
+        shaker(next, s % 4 === 2 ? 0.05 : 0.025);
         next += step; i++;
       }
     }
     const timer = setInterval(schedule, 50);
     schedule();
-    music = { stop: () => clearInterval(timer) };
+    music = { stop: () => { clearInterval(timer); input.disconnect(); } };
   }
 
   function stopMusic() { music?.stop(); music = null; }
