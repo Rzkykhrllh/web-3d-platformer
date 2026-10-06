@@ -37,8 +37,11 @@ function gameClips(animations) {
     out.jump = pinHips(cut(src.jump, 'jump', 0.5, 0.8), true);  // take-off to the top
     out.fall = pinHips(cut(src.jump, 'fall', 0.85, 1.0), true); // legs reaching down
   }
-  // Spin: one frame held, arms flung out wide and a knee up; player.js does the turning
-  if (src.spin) out.spin = pinHips(cut(src.spin, 'spin', 1.1, 1.17));
+  // Spin: a held pose while player.js does the turning. The T-pose (arms
+  // straight out, like Crash) if the model has it, else the arms-out frame of
+  // the melee clip
+  if (src.tpose) out.spin = pinHips(cut(src.tpose, 'spin', 0, 0.07));
+  else if (src.spin) out.spin = pinHips(cut(src.spin, 'spin', 1.1, 1.17));
   if (src.hurt) out.hurt = pinHips(cut(src.hurt, 'hurt', 0.4, 1.6));
   return out;
 }
