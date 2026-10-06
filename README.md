@@ -13,6 +13,8 @@ Then open http://localhost:4000/island/ (if that port is busy, Vite picks the ne
 
 The game is built for `game.byairu.com/island` (`base` in `vite.config.js`), with absolute asset paths so `/island` works with or without a trailing slash. For a deploy at the domain root, build with `BASE_PATH=/ npm run build`.
 
+In Dokploy, point the domain at path `/` with **Strip Path off**: the container's nginx (`nginx.conf`) serves the game at `/island` and redirects every other URL there.
+
 | URL option | What it does |
 |---|---|
 | `?debug` | Live tuning panel: movement, camera, lighting, quality, teleport |
