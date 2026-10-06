@@ -65,7 +65,8 @@ Tanda 👤 = butuh keputusan, aset, atau akun dari kamu.
 - [x] **[P2]** Varian peti: pantul, besi, checkpoint, "!" + peti hantu
 - [ ] **[P2]** Segmen kejar-kejaran batu menggelinding
 - [x] **[P2]** Seksi Fire Temple: kayu menggelinding, semburan api berirama, peti Nitro, lift vertikal ke puncak kuil
-- [ ] **[P2]** Area rahasia / gem bonus (sekarang: toast "All crates!" + rank gold)
+- [x] **[P2]** Power crystal pink di tengah level + gem hijau yang baru terbuka setelah semua peti pecah, warp pad sebagai finish
+- [ ] **[P2]** Area rahasia
 - [ ] **[P3]** Sistem nyawa (sengaja belum, demi recruiter)
 
 ## 6. Audio

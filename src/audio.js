@@ -108,6 +108,11 @@ export function createAudio() {
     checkpoint: () => [523, 659, 784].forEach((f, i) => tone({ type: 'triangle', from: f, dur: 0.3, vol: 0.12, at: i * 0.08 })),
     activate: () => [392, 523, 659, 784].forEach((f, i) => tone({ type: 'square', from: f, dur: 0.12, vol: 0.05, at: i * 0.05 })),
     gem: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone({ type: 'triangle', from: f, dur: 0.5, vol: 0.12, at: i * 0.09 })),
+    crystal: () => [659, 831, 988, 1319].forEach((f, i) => tone({ type: 'sine', from: f, dur: 0.6, vol: 0.12, at: i * 0.07 })),
+    warp: () => {
+      tone({ type: 'sine', from: 220, to: 1760, dur: 0.9, vol: 0.14 });
+      hiss({ dur: 0.9, vol: 0.12, filter: 'bandpass', from: 400, to: 4000, q: 2 });
+    },
     fall: () => tone({ type: 'triangle', from: 600, to: 120, dur: 0.6, vol: 0.12 }),
     card: () => tone({ type: 'sine', from: 660, to: 990, dur: 0.12, vol: 0.06 }),
     click: () => tone({ type: 'sine', from: 700, dur: 0.05, vol: 0.06 })

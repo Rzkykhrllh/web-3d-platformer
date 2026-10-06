@@ -375,7 +375,7 @@ export function buildScenery(scene, { textures, quality, rand }) {
   // Torches: emissive flames bright enough to bloom
   const flameMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 1.4, 0.4), toneMapped: false });
   const torches = [];
-  [[-4.9, -99], [4.9, -99], [-4.9, -131], [4.9, -131], [-4.9, -203], [4.9, -203], [-4.9, -227], [4.9, -227], [-2.2, -245], [2.2, -245]].forEach(([x, z]) => {
+  [[-4.9, -99], [4.9, -99], [-4.9, -131], [4.9, -131], [-4.9, -203], [4.9, -203], [-4.9, -227], [4.9, -227], [-1.9, -252], [1.9, -252]].forEach(([x, z]) => {
     const y = Math.max(pathTop(z), bankHeight(x, z) - 0.3);
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.8, 6), toon({ color: 0x5e3a1a }));
     pole.position.set(x, y + 0.9, z);

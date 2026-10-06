@@ -13,6 +13,7 @@ import { createCrateFactory, TNT_RADIUS, BOUNCE_HITS } from './crates.js';
 import { createEnemies } from './enemies.js';
 import { createPlatforms } from './platforms.js';
 import { createHazards } from './hazards.js';
+import { createCollectibles } from './collectibles.js';
 import { proceduralLevel } from './level.js';
 import { loadGltfLevel } from './gltf-level.js';
 import { buildScenery } from './scenery.js';
@@ -60,12 +61,12 @@ const fx = particles.fx;
 // Game state
 const state = {
   started: false, done: false,
-  fruit: 0, cratesBroken: 0, crateTotal: 0,
+  fruit: 0, cratesBroken: 0, crateTotal: 0, crystal: false, gem: false, gemHintAt: -99,
   checkpoint: new THREE.Vector3(), playTime: 0,
   hitStop: 0, simTime: 0, lastStep: 0
 };
 
-let level, settings, tierName, tier, post, rig, player, factory, enemies, platforms, hazards, scenery, sky, water, fruits, gem;
+let level, settings, tierName, tier, post, rig, player, factory, enemies, platforms, hazards, scenery, sky, water, fruits, pickups;
 const ghosts = [];
 
 const ui = createUI({
@@ -228,14 +229,9 @@ function buildEntities() {
   fruits = spots.map((pos, i) => ({ position: pos.clone(), base: pos.clone(), phase: i * 0.7, taken: false, pop: 0, visible: true, scale: 1, rot: 0 }));
   fruits.meshes = [fruitMesh, leafMesh];
 
-  // Gem
-  gem = new THREE.Mesh(
-    new THREE.OctahedronGeometry(0.7, 0),
-    toon({ color: 0x7fd3ff, emissive: 0x3a8bff, emissiveIntensity: 2.2 })
-  );
-  gem.castShadow = true;
-  gem.position.copy(level.gemPosition);
-  scene.add(gem);
+  pickups = createCollectibles(scene, level);
+  ui.initPickups(!!pickups.crystal);
+  if (!state.crateTotal) pickups.openGem(); // nothing to break
 
   const characters = { cat: createCat, pip: createPip };
   const charName = new URLSearchParams(location.search).get('char') || CHARACTER;
@@ -341,7 +337,10 @@ function countCrate(c) {
   state.cratesBroken++;
   ui.setCrates(state.cratesBroken, state.crateTotal);
   if (c.content) ui.showCard(c.content);
-  if (state.cratesBroken === state.crateTotal) ui.toast('All crates!');
+  if (state.cratesBroken === state.crateTotal) {
+    ui.toast('All crates! The gem is free');
+    openGem();
+  }
 }
 
 function explodeTnt(c) {
@@ -455,18 +454,55 @@ function respawn() {
   ui.flash();
 }
 
+// Crystal, gem and the warp pad
+function checkPickups() {
+  const p = player.state.pos, chest = p.clone().setY(p.y + 0.8);
+  const { crystal, gem, exit } = pickups;
+  if (crystal && !crystal.taken && crystal.root.position.distanceTo(chest) < 1.3) {
+    crystal.taken = true;
+    crystal.root.visible = false;
+    state.crystal = true;
+    ui.gotPickup('crystal');
+    audio.play('crystal');
+    fx.sparkle(crystal.root.position, 0xff5fd2, 24);
+    ui.toast('Power crystal!');
+  }
+  if (!gem.taken && gem.root.position.distanceTo(chest) < 1.4) {
+    if (gem.open) {
+      gem.taken = true;
+      gem.root.visible = false;
+      state.gem = true;
+      ui.gotPickup('gem');
+      audio.play('gem');
+      fx.sparkle(gem.root.position, 0x3fe07a, 30);
+      ui.toast('Green gem!');
+    } else if (state.simTime - state.gemHintAt > 3) {
+      state.gemHintAt = state.simTime;
+      audio.play('metal');
+      ui.toast(`Break every crate to free the gem (${state.crateTotal - state.cratesBroken} left)`);
+    }
+  }
+  if (player.state.onGround && Math.hypot(p.x - exit.at.x, p.z - exit.at.z) < 1.2 && Math.abs(p.y - exit.at.y) < 0.5) finish();
+}
+
+function openGem() {
+  pickups.openGem();
+  fx.sparkle(pickups.gem.root.position, 0x3fe07a, 20);
+  audio.play('activate');
+}
+
 function finish() {
   if (state.done) return;
   state.done = true;
   player.state.vel.set(0, 0, 0);
-  audio.play('gem');
-  fx.sparkle(gem.position, 0x9fe3ff, 30);
-  gem.visible = false;
+  audio.play('warp');
+  fx.sparkle(pickups.exit.at.clone().setY(pickups.exit.at.y + 1), 0x8fe8ff, 30);
   rig.setMode('finish');
   ui.showFinish({
     secs: Math.round(state.playTime),
     fruit: state.fruit, fruitTotal: fruits.length + BOUNCE_HITS,
-    crates: state.cratesBroken, crateTotal: state.crateTotal
+    crates: state.cratesBroken, crateTotal: state.crateTotal,
+    crystal: pickups.crystal ? state.crystal : null, gem: state.gem
   });
 }
 
@@ -498,7 +534,7 @@ function simulate(dt) {
     const stepIndex = Math.floor(s.walk / Math.PI);
     if (stepIndex !== state.lastStep) { state.lastStep = stepIndex; audio.play('step'); fx.dust(s.pos, 1, dustColor(s.pos)); }
   }
-  if (!state.done && gem.position.distanceTo(s.pos.clone().setY(s.pos.y + 0.8)) < 1.4) finish();
+  if (!state.done) checkPickups();
 }
 
 const fruitMatrix = new THREE.Matrix4(), fruitQuat = new THREE.Quaternion(), fruitScale = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
@@ -555,9 +591,9 @@ function frame() {
 
   // Ambient animation
   updateFruit(dt);
-  gem.rotation.y = t * 1.5;
-  gem.position.y = level.gemPosition.y + Math.sin(t * 2) * 0.15;
-  if (Math.random() < 0.08 && gem.visible) fx.sparkle(gem.position, 0x9fe3ff, 1);
+  pickups.update(t);
+  if (pickups.gem.open && !pickups.gem.taken && Math.random() < 0.08) fx.sparkle(pickups.gem.root.position, 0x3fe07a, 1);
+  if (pickups.crystal && !pickups.crystal.taken && Math.random() < 0.06) fx.sparkle(pickups.crystal.root.position, 0xff5fd2, 1);
   for (const tr of scenery.torches) if (Math.random() < dt * 4) fx.sparkle(tr.pos, 0xffb347, 1);
   particles.update(dt);
   scenery.update(dt, t);
@@ -586,7 +622,7 @@ load().then(() => {
     };
   }
   if (new URLSearchParams(location.search).has('debug')) {
-    import('./debug.js').then(m => m.createDebugPanel({ player, rig, state, applyTier, renderer, post, sun, hemi }));
+    import('./debug.js').then(m => m.createDebugPanel({ player, rig, state, applyTier, renderer, post, sun, hemi, openGem }));
   }
   requestAnimationFrame(frame);
 });

@@ -10,14 +10,16 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 //   COL_*          invisible collider: its bounding box becomes a walkable block
 //   WALK_*         visible mesh that is also a walkable block
 //   CRATE_<type>   crate standing on this point (basic, bonus, tnt, bounce,
-//                  checkpoint, activator, metal). Props: content, ghost
+//                  checkpoint, activator, metal, nitro). Props: content, ghost
 //   FRUIT*         a fruit at this point
 //   ENEMY*         a crab patrolling around this point. Props: range, speed
 //   MOVER*         moving platform (mesh). Props: axis ("x", "y" or "z"), range, speed
 //   CRUMBLE*       crumbling platform (mesh)
 //   SPAWN          where Pip starts
 //   CHECKPOINT*    extra respawn points
-//   GEM            the finish
+//   GEM            the green gem, which opens once every crate is broken
+//   CRYSTAL        the pink power crystal (optional)
+//   EXIT           the warp pad that ends the level (optional; defaults to under the gem)
 //   BOUNDS         invisible box Pip can't leave
 //
 // Everything else is scenery and gets shadows switched on.
@@ -46,7 +48,7 @@ export async function loadGltfLevel(url, scene, onProgress) {
   const level = {
     source: url,
     surfaces: [], crumblers: [], movers: [], crateSpots: [], enemySpots: [],
-    fruitSpots: [], checkpoints: [], gemPosition: null, bounds: null,
+    fruitSpots: [], checkpoints: [], gemPosition: null, crystalPosition: null, exitPosition: null, bounds: null,
     animations: gltf.animations
   };
   const box = new THREE.Box3(), pos = new THREE.Vector3();
@@ -77,6 +79,8 @@ export async function loadGltfLevel(url, scene, onProgress) {
     else if (prefix(name, 'SPAWN')) { level.checkpoints.unshift(pos.clone()); remove.push(obj); }
     else if (prefix(name, 'CHECKPOINT')) { level.checkpoints.push(pos.clone()); remove.push(obj); }
     else if (prefix(name, 'GEM')) { level.gemPosition = pos.clone(); remove.push(obj); }
+    else if (prefix(name, 'CRYSTAL')) { level.crystalPosition = pos.clone(); remove.push(obj); }
+    else if (prefix(name, 'EXIT')) { level.exitPosition = pos.clone(); remove.push(obj); }
     else if (prefix(name, 'BOUNDS')) { const b = toBox(obj); level.bounds = { xMin: b.x0, xMax: b.x1, zMin: b.z0, zMax: b.z1 }; remove.push(obj); }
     else if (obj.isMesh) { obj.castShadow = true; obj.receiveShadow = true; }
   });

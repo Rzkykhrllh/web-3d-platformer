@@ -193,7 +193,7 @@ export function createUI(handlers) {
     toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
   }
 
-  function showFinish({ secs, fruit, fruitTotal, crates, crateTotal }) {
+  function showFinish({ secs, fruit, fruitTotal, crates, crateTotal, crystal, gem }) {
     mode = 'finished';
     hideCard();
     touch.hidden = true;
@@ -214,6 +214,8 @@ export function createUI(handlers) {
       ['Time', `${m ? m + ' min ' : ''}${s} sec`],
       ['Fruit', `${fruit} / ${fruitTotal}`],
       ['Crates', `${crates} / ${crateTotal}`],
+      ...(crystal === null ? [] : [['Power crystal', crystal ? 'Found' : 'Missed']]),
+      ['Green gem', gem ? 'Found' : crates === crateTotal ? 'Left behind' : 'Locked'],
       ['Portfolio found', `${found} / ${items.length}`]
     ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
     setTimeout(() => {
@@ -232,6 +234,14 @@ export function createUI(handlers) {
     setLoading, ready, showCard, hideCard, toast, showFinish,
     setFruit(n) { fruitEl.textContent = n; bump(fruitEl.parentElement); },
     setCrates(n, total) { crateEl.textContent = `${n} / ${total}`; if (n) bump(crateEl.parentElement); },
+    // Crystal and gem icons: dim until collected; levels without a crystal hide its icon
+    initPickups(hasCrystal) { $('crystalIcon').hidden = !hasCrystal; },
+    gotPickup(name) {
+      const el = $(`${name}Icon`);
+      el.classList.add('got');
+      el.setAttribute('aria-label', name === 'gem' ? 'Green gem: found' : 'Power crystal: found');
+      bump($('treasure'));
+    },
     flash() { const f = $('fade'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); }
   };
 }

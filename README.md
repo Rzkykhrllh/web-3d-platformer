@@ -60,14 +60,16 @@ The built-in level is described in `src/level.js`. A level can also be built in 
 |---|---|---|
 | `WALK_` | Visible mesh you can stand on (its bounding box is the collider) | |
 | `COL_` | Invisible collider, for when the visible mesh is too detailed | |
-| `CRATE_basic`, `CRATE_bonus`, `CRATE_tnt`, `CRATE_bounce`, `CRATE_checkpoint`, `CRATE_activator`, `CRATE_metal` | Crate standing on this point (use an Empty) | `content` (an id from `content.js`), `ghost` (bool) |
+| `CRATE_basic`, `CRATE_bonus`, `CRATE_tnt`, `CRATE_bounce`, `CRATE_checkpoint`, `CRATE_activator`, `CRATE_metal`, `CRATE_nitro` | Crate standing on this point (use an Empty) | `content` (an id from `content.js`), `ghost` (bool) |
 | `FRUIT` | A fruit at this point | |
 | `ENEMY` | Crab patrolling sideways around this point | `range`, `speed` |
 | `MOVER` | Moving platform (the mesh itself moves) | `axis` (`x`, `y` or `z`), `range`, `speed` |
 | `CRUMBLE` | Platform that falls after you land on it | |
 | `SPAWN` | Start point | |
 | `CHECKPOINT` | Extra respawn point | |
-| `GEM` | Finish | |
+| `GEM` | Green gem; opens once every crate is broken | |
+| `CRYSTAL` | Pink power crystal (optional) | |
+| `EXIT` | Warp pad that ends the level (optional; defaults to under the gem) | |
 | `BOUNDS` | Invisible box the player can't leave | |
 
 Anything else is scenery and gets shadows. Colliders are axis-aligned boxes, so keep walkable pieces box-shaped and unrotated (rotate the visual mesh and use a `COL_` box under it if needed).

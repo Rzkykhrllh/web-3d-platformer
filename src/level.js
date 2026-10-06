@@ -7,13 +7,13 @@ import * as THREE from 'three';
 //   gap 1      z -60 .. -75   two stone pillars, skills crate on the second
 //   jungle     z -75 .. -100  "!" crate with ghost crates, faster crab
 //   step up    z -100         ledge you have to jump
-//   ruins A    z -100 .. -112
+//   ruins A    z -100 .. -112 the pink power crystal, halfway through
 //   gap 2      z -112 .. -130 a moving platform, then two crumbling ones
 //   ruins B    z -130 .. -176 metal crate stairs, TNT, a crate on the old pedestal
 //   log run    z -176 .. -202 logs roll out of the temple gate; jump them
 //   fire hall  z -202 .. -228 fire jets in a diagonal wave, nitro crates
 //   lift       z -228 .. -232 a platform rides up to the temple top
-//   temple top z -232 .. -256 gem on a pedestal
+//   temple top z -232 .. -256 green gem (opens once every crate is broken), warp pad
 
 export const PATH_HALF_WIDTH = 4.4;
 export const Z_START = 4;
@@ -34,7 +34,8 @@ export const surfaces = [
   { kind: 'stone', x0: -1.4, x1: 1.4, z0: -167,  z1: -163,  top: 1.6 },
   { kind: 'stone', x0: -4.5, x1: 4.5, z0: -228,  z1: -202,  top: 1 },
   { kind: 'stone', x0: -4.5, x1: 4.5, z0: -256,  z1: -232,  top: TEMPLE_TOP },
-  { kind: 'stone', x0: -1.4, x1: 1.4, z0: -250,  z1: -246,  top: TEMPLE_TOP + 0.6 }
+  // Gem pedestal, off to the side so the warp pad can sit in the middle
+  { kind: 'stone', x0: 1.8,  x1: 4.2, z0: -247,  z1: -244,  top: TEMPLE_TOP + 0.6 }
 ];
 
 // Platforms that fall a moment after Pip lands on them, then come back
@@ -123,7 +124,9 @@ export const enemySpots = [
   { x0: -3.4, x1: 0.5, z: -155, y: 1, speed: 2.4 }
 ];
 
-export const gemPosition = new THREE.Vector3(0, TEMPLE_TOP + 2.1, -248);
+export const crystalPosition = new THREE.Vector3(0, 2.4, -109);
+export const gemPosition = new THREE.Vector3(3, TEMPLE_TOP + 2.1, -245.5);
+export const exitPosition = new THREE.Vector3(0, TEMPLE_TOP, -249.5);
 
 // Fallback respawn points; checkpoint crates add their own
 export const checkpoints = [
@@ -185,7 +188,9 @@ export function proceduralLevel() {
     surfaces: surfaces.map(s => ({ ...s })),
     crumblers, movers, crateSpots, enemySpots, logRun, fireJets,
     fruitSpots: fruitSpots(),
+    crystalPosition: crystalPosition.clone(),
     gemPosition: gemPosition.clone(),
+    exitPosition: exitPosition.clone(),
     checkpoints: checkpoints.map(c => c.clone()),
     bounds: { xMin: -PATH_HALF_WIDTH, xMax: PATH_HALF_WIDTH, zMin: Z_END, zMax: Z_START },
     pathTop,

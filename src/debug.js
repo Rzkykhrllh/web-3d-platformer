@@ -4,7 +4,7 @@ import { TIERS } from './quality.js';
 
 // Live tuning panel, opened with ?debug in the URL. Changes are not saved;
 // copy good values back into config.js.
-export function createDebugPanel({ player, state, applyTier, renderer, post, sun, hemi }) {
+export function createDebugPanel({ player, state, applyTier, renderer, post, sun, hemi, openGem }) {
   const gui = new GUI({ title: 'Debug' });
 
   const move = gui.addFolder('Player');
@@ -39,12 +39,13 @@ export function createDebugPanel({ player, state, applyTier, renderer, post, sun
   const jump = gui.addFolder('Teleport');
   const spots = {
     start: [0, 0, 2], 'gap 1': [0, 0, -57], jungle: [0, 0, -78], 'step up': [0, 0, -97],
-    'gap 2': [0, 1, -110], 'ruins B': [0, 1, -133], 'TNT': [0, 1, -146], 'log run': [0, 1, -176],
+    crystal: [0, 1, -104], 'gap 2': [0, 1, -110], 'ruins B': [0, 1, -133], 'TNT': [0, 1, -146], 'log run': [0, 1, -176],
     'fire hall': [0, 1, -203], lift: [0, 1, -226], gem: [0, 4.5, -236]
   };
   for (const [name, [x, y, z]] of Object.entries(spots)) {
     jump.add({ go: () => { player.state.pos.set(x, y, z); player.state.vel.set(0, 0, 0); state.checkpoint.set(x, y, z); } }, 'go').name(name);
   }
+  jump.add({ openGem }, 'openGem').name('unlock gem');
   jump.close();
   return gui;
 }
