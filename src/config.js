@@ -17,6 +17,7 @@ export const PLAYER = {
   coyoteTime: 0.1,       // can still jump this long after leaving a ledge
   jumpBuffer: 0.13,      // a jump pressed this early before landing still counts
   spinTime: 0.45,
+  spinTurns: 3,          // full turns in one spin
   spinCooldown: 0.2,
   spinReach: 1.6,
   crateBounce: 8,

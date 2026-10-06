@@ -37,7 +37,8 @@ function gameClips(animations) {
     out.jump = pinHips(cut(src.jump, 'jump', 0.5, 0.8), true);  // take-off to the top
     out.fall = pinHips(cut(src.jump, 'fall', 0.85, 1.0), true); // legs reaching down
   }
-  if (src.spin) out.spin = pinHips(cut(src.spin, 'spin', 0.25, 1.05)); // the full turn, no wind-up or kick
+  // Spin: one frame held, arms flung out wide and a knee up; player.js does the turning
+  if (src.spin) out.spin = pinHips(cut(src.spin, 'spin', 1.1, 1.17));
   if (src.hurt) out.hurt = pinHips(cut(src.hurt, 'hurt', 0.4, 1.6));
   return out;
 }
@@ -147,9 +148,9 @@ export function createCatModel(model) {
       const name = pick(s);
       const action = play(name, name === 'spin' ? 0.05 : 0.12);
       const speed = Math.hypot(s.vel.x, s.vel.z);
-      // Match the clip speeds to the game: feet to the ground speed, the spin
-      // and the flinch to their (much shorter) timers in player.js
-      action.timeScale = { run: Math.max(0.6, speed / 8) * 1.1, walk: Math.max(0.5, speed / 2.5), spin: 1.8, hurt: 1.6 }[name] ?? 1;
+      // Match the clip speeds to the game: feet to the ground speed, the
+      // flinch to its (much shorter) timer in player.js
+      action.timeScale = { run: Math.max(0.6, speed / 8) * 1.1, walk: Math.max(0.5, speed / 2.5), hurt: 1.6 }[name] ?? 1;
       mixer.update(dt);
     }
   };

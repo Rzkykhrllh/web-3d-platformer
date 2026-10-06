@@ -237,8 +237,8 @@ export function createPlayer(scene, world, events, createModel = createPip) {
 
     if (s.spin > 0) {
       const k = 1 - s.spin / P.spinTime;
-      // The rigged model's spin clip already turns it round
-      model.body.rotation.y = procedural ? k * Math.PI * 4 : 0;
+      // A fast whirl round y, like Crash
+      model.body.rotation.y = k * Math.PI * 2 * P.spinTurns;
       model.swirl.material.opacity = 0.6 * Math.sin(k * Math.PI);
       model.swirl.scale.setScalar(0.7 + k * 0.6);
       model.swirl.rotation.z = -k * 12;
