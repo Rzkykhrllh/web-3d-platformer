@@ -43,33 +43,35 @@ export const movers = [
 
 export const crateSpots = [
   { x: 0,    z: -9,   type: 'bonus', content: 'about' },
-  { x: -2,   z: -17,  type: 'basic' },
+  { x: -2,   z: -17,  type: 'basic', content: 'ncj-traffic-api' },
   { x: 2,    z: -17,  type: 'basic' },
-  { x: -1.5, z: -25,  type: 'basic', content: 'project-mtls' },
+  { x: -1.5, z: -25,  type: 'basic', content: 'ncj-ml-platform' },
   { x: 2.6,  z: -31,  type: 'bounce' },
-  { x: 2.2,  z: -36,  type: 'basic', content: 'project-rbac' },
+  { x: 2.2,  z: -36,  type: 'basic', content: 'ncj-monitoring' },
   { x: -2.2, z: -36,  type: 'basic' },
   { x: 0,    z: -48,  type: 'basic' },
-  { x: 0,    z: -48,  type: 'basic', level: 1 },
+  { x: 0,    z: -48,  type: 'basic', level: 1, content: 'tiket' },
   { x: -2.6, z: -55,  type: 'checkpoint' },
   { x: 0,    z: -72,  type: 'basic', content: 'skills', base: 1.2 },
-  { x: -2,   z: -81,  type: 'basic', content: 'project-anomaly' },
+  { x: -2,   z: -81,  type: 'basic', content: 'yomeru' },
   { x: 2.4,  z: -86,  type: 'activator' },
   { x: -2.5, z: -90,  type: 'basic', ghost: true },
-  { x: 0,    z: -90,  type: 'bonus', ghost: true },
+  { x: 0,    z: -90,  type: 'bonus', ghost: true, content: 'nihongo-popup' },
   { x: 2.5,  z: -90,  type: 'basic', ghost: true },
   { x: 2.6,  z: -106, type: 'checkpoint' },
-  { x: -2.5, z: -106, type: 'basic' },
-  { x: 0,    z: -136, type: 'bonus', content: 'project-island' },
+  { x: -2.5, z: -106, type: 'basic', content: 'early' },
+  { x: 0,    z: -136, type: 'bonus', content: 'photo-site' },
   { x: 3,    z: -140, type: 'metal' },
   { x: 3,    z: -142, type: 'metal', level: 1 },
   { x: 3,    z: -144, type: 'metal', level: 2 },
-  { x: -2.5, z: -146, type: 'basic' },
+  // Floating reward past the top of the metal stairs
+  { x: 3,    z: -148.5, type: 'bonus', content: 'photography', base: 4.2 },
+  { x: -2.5, z: -146, type: 'basic', content: 'into-ugm' },
   { x: -1.5, z: -150, type: 'basic' },
   { x: 0,    z: -150, type: 'tnt', content: 'contact' },
   { x: 1.5,  z: -150, type: 'basic' },
   { x: -2.5, z: -157, type: 'basic' },
-  { x: 2.5,  z: -157, type: 'basic' }
+  { x: 2.5,  z: -157, type: 'basic', content: 'island' }
 ];
 
 export const enemySpots = [

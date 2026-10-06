@@ -64,7 +64,7 @@ point('SPAWN', [0, 0, 2]);
 point('CHECKPOINT_after_gap', [0, 0, -37]);
 point('CRATE_bonus', [0, 0, -8], { content: 'about' });
 point('CRATE_basic', [-2, 0, -14]);
-point('CRATE_basic.001', [2, 0, -14], { content: 'project-mtls' });
+point('CRATE_basic.001', [2, 0, -14], { content: 'yomeru' });
 point('CRATE_bounce', [2.5, 0, -19]);
 point('CRATE_activator', [-2.5, 0, -40]);
 point('CRATE_basic.002', [0, 0, -44], { ghost: true });
