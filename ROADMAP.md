@@ -5,6 +5,20 @@ Tanda 👤 = butuh keputusan, aset, atau akun dari kamu.
 
 ---
 
+## Berikutnya (urutan prioritas, dibahas 2026-10-06)
+
+1. 👤 Uji di HP dan laptop biasa, catat FPS (belum pernah terukur di perangkat asli)
+2. Topeng Aku Aku: peti khusus, menahan 1 serangan; 2 topeng = kebal sebentar
+3. Hub / warp room: pintu ke level pendek per topik (Projects, Experience, Skills), peti menjatuhkan kartu yang terkumpul di "Collection" (portfolio dinyalakan lagi lewat `SHOW_PORTFOLIO`)
+4. Segmen kejar-kejaran batu (kamera berbalik)
+5. Jalur melengkung + kamera ikut belokan
+6. Musuh kedua (katak lompat / burung menukik)
+7. Time trial + waktu terbaik tersimpan
+8. 👤 Animasi Falling Idle + Dying dari Mixamo
+9. 👤 SFX asli (CC0) untuk peti, spin, lompat
+10. Bulu belakang yang ikut lengan (butuh Blender)
+11. Gambar Open Graph + analytics ringan
+
 ## 0. Keputusan awal
 
 - [x] **[P1]** Art direction: stylized/cartoon seperti versi sekarang (warna jenuh, bentuk bulat, outline). Bukan realistis: lebih ringan dan lebih cocok dengan tema

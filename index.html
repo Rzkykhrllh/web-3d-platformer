@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script>
+  // Asset paths are relative (base './'), so served under a subpath like
+  // /island the page must be at /island/ or ./assets resolves to /assets.
+  // Add the missing slash before anything else loads.
+  if (!location.pathname.endsWith('/') && !/\.[a-z0-9]+$/i.test(location.pathname)) {
+    location.replace(location.pathname + '/' + location.search + location.hash);
+  }
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>N. Usantara Island</title>
 <meta name="description" content="A playable portfolio: run down a jungle path and break crates to see my work.">
