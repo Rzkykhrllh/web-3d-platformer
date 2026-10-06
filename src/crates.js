@@ -18,6 +18,9 @@ import { toon } from './render/toon.js';
 export const TNT_FUSE = 3;
 export const TNT_RADIUS = 3.6;
 export const BOUNCE_HITS = 5;
+// Fruit inside each kind of crate. The bounce crate pays its share out a bit
+// per bounce; anything left drops out when it breaks.
+export const CRATE_FRUIT = { basic: 3, bonus: 10, bounce: 10 };
 
 const COUNTED = new Set(['basic', 'bonus', 'tnt', 'nitro', 'bounce', 'checkpoint']);
 

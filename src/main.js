@@ -10,7 +10,7 @@ import { createPlayer } from './player.js';
 import { createCameraRig } from './camera.js';
 import { createParticles } from './particles.js';
 import { createAudio } from './audio.js';
-import { createCrateFactory, TNT_RADIUS, BOUNCE_HITS } from './crates.js';
+import { createCrateFactory, TNT_RADIUS, BOUNCE_HITS, CRATE_FRUIT } from './crates.js';
 import { createEnemies } from './enemies.js';
 import { createPlatforms } from './platforms.js';
 import { createHazards } from './hazards.js';
@@ -310,7 +310,9 @@ function hitCrate(c, how) {
       else {
         c.hits++;
         factory.poke(c);
-        addFruit(1, c.group.position);
+        const share = CRATE_FRUIT.bounce / BOUNCE_HITS;
+        c.fruitGiven = (c.fruitGiven ?? 0) + share;
+        addFruit(share, c.group.position);
         audio.play('bounce');
         if (how === 'stomp') player.bounce(held ? PLAYER.springBounce : PLAYER.springBounce * 0.85);
         if (c.hits >= BOUNCE_HITS) breakCrate(c);
@@ -355,6 +357,8 @@ function hitCrate(c, how) {
 function breakCrate(c) {
   if (c.broken) return;
   factory.smash(c);
+  const fruit = (CRATE_FRUIT[c.type] ?? 0) - (c.fruitGiven ?? 0);
+  if (fruit > 0) addFruit(fruit, c.group.position);
   audio.play('crate', panOf(c.x));
   state.hitStop = FEEL.hitStop;
   countCrate(c);
@@ -438,7 +442,8 @@ function addFruit(n, from) {
   state.fruit += n;
   ui.setFruit(state.fruit);
   audio.play('fruit');
-  fx.sparkle(from.clone ? from.clone() : from, 0xffb347, 6);
+  // A bigger burst for a crate-load of fruit
+  fx.sparkle(from.clone ? from.clone() : from, 0xffb347, Math.min(24, 4 + n * 2));
 }
 
 function loseFruit() {
@@ -543,7 +548,7 @@ function finish() {
   player.model.play?.('victory');
   ui.showFinish({
     secs: Math.round(state.playTime),
-    fruit: state.fruit, fruitTotal: fruits.length + BOUNCE_HITS,
+    fruit: state.fruit, fruitTotal: fruits.length + world.crates.reduce((n, c) => n + (CRATE_FRUIT[c.type] ?? 0), 0),
     crates: state.cratesBroken, crateTotal: state.crateTotal,
     crystal: pickups.crystal ? state.crystal : null, gem: state.gem, deaths: state.deaths
   });
