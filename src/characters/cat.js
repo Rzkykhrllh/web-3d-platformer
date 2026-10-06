@@ -23,32 +23,65 @@ const C = {
   gem: 0x1fbf73
 };
 
-// Grey fur with darker tabby bands; `vertical` for the forehead stripes
-function tabbyTexture(vertical = false) {
+// Grey fur with tabby markings. `head` maps onto a three.js sphere (the face
+// is at u = 0.25): an "M" of stripes on the forehead and stripes running down
+// from the crown everywhere else. Limbs get a few broken streaks, not rings.
+function tabbyTexture(head = false) {
   return canvasTexture(256, (ctx, s) => {
     ctx.fillStyle = '#9a9a9a'; ctx.fillRect(0, 0, s, s);
     ctx.fillStyle = '#4f4f4f';
-    if (vertical) {
-      // Forehead stripes sit around u = 0.25 (the front of a three.js sphere)
-      const cx = s * 0.25;
+    const stripe = (x, w, len, bend = 0) => {
+      ctx.beginPath();
+      ctx.moveTo(x - w, 0); ctx.lineTo(x + w, 0); ctx.lineTo(x + bend, s * len);
+      ctx.closePath(); ctx.fill();
+    };
+    if (head) {
+      const face = s * 0.25;
       for (const [dx, w, len] of [[0, 8, 0.5], [-14, 6, 0.44], [14, 6, 0.44], [-28, 5, 0.38], [28, 5, 0.38], [-42, 4, 0.3], [42, 4, 0.3]]) {
-        ctx.beginPath();
-        ctx.moveTo(cx + dx - w, 0); ctx.lineTo(cx + dx + w, 0); ctx.lineTo(cx + dx * 1.2, s * len);
-        ctx.closePath(); ctx.fill();
+        stripe(face + dx, w, len, dx * 0.2);
       }
-      // Bands around the sides and back of the head
-      for (let i = 0; i < 6; i++) {
-        const y = s * (0.12 + i * 0.07);
-        ctx.fillRect(s * 0.45, y, s * 0.6, 7);
+      // Down the sides and back of the head, longest at the back (u = 0.75)
+      for (let u = 0.4; u <= 1.1; u += 0.055) {
+        const back = 1 - Math.min(1, Math.abs(u - 0.75) / 0.35);
+        stripe((u % 1) * s, 5 + back * 3, 0.32 + back * 0.3, Math.sin(u * 20) * 6);
       }
     } else {
-      for (let y = 8; y < s; y += 34) {
+      // Short wavy streaks scattered around, so a cylinder doesn't read as striped socks
+      const rand = (() => { let k = 7; return () => (k = (k * 16807) % 2147483647) / 2147483647; })();
+      for (let i = 0; i < 9; i++) {
+        const y = s * (0.08 + i * 0.105), x0 = rand() * s, len = s * (0.25 + rand() * 0.2);
         ctx.beginPath();
-        for (let x = 0; x <= s; x += 16) ctx.lineTo(x, y + Math.sin(x * 0.05) * 5);
-        for (let x = s; x >= 0; x -= 16) ctx.lineTo(x, y + 11 + Math.sin(x * 0.05 + 1) * 4);
+        for (let x = 0; x <= len; x += 8) ctx.lineTo(x0 + x, y + Math.sin(x * 0.06) * 4);
+        for (let x = len; x >= 0; x -= 8) ctx.lineTo(x0 + x, y + 7 * Math.sin(Math.PI * x / len) + Math.sin(x * 0.06 + 1) * 3);
         ctx.fill();
+        // Wrap around the seam
+        ctx.save(); ctx.translate(-s, 0); ctx.fill(); ctx.restore();
       }
     }
+  });
+}
+
+// Shoulder part of the mane: grey with stripes running down from the neck
+function capeTexture() {
+  return canvasTexture(256, (ctx, s) => {
+    ctx.fillStyle = '#9a9a9a'; ctx.fillRect(0, 0, s, s);
+    ctx.fillStyle = '#4f4f4f';
+    for (let i = 0; i < 9; i++) {
+      const x = s * (0.06 + i * 0.11), w = 6 + (i % 3) * 2;
+      ctx.beginPath();
+      ctx.moveTo(x - w, 0); ctx.lineTo(x + w, 0); ctx.lineTo(x + Math.sin(i * 2) * 8, s * (0.55 + (i % 2) * 0.2));
+      ctx.closePath(); ctx.fill();
+    }
+  });
+}
+
+// One strand of the mane: cape grey at the root, fading to white at the tip.
+// A cone's v runs 0 at the wide base to 1 at the apex; the canvas top is v = 1.
+function strandTexture() {
+  return canvasTexture(128, (ctx, s) => {
+    const g = ctx.createLinearGradient(0, s, 0, 0);
+    g.addColorStop(0, '#9a9a9a'); g.addColorStop(0.4, '#a8a8a6'); g.addColorStop(0.68, '#f2f2f0'); g.addColorStop(1, '#ffffff');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
   });
 }
 
@@ -72,25 +105,6 @@ function shirtTexture() {
     palm(s * 0.75, s * 0.85, 1);
     palm(s * 0.7, s * 0.3, 0.8);
   });
-}
-
-// Spiky fur cape: a jagged outline extruded thin, grey at the root fading to white
-function furWing() {
-  const pts = [[0, 0.12], [0.3, 0.08], [0.78, 0.16], [0.42, -0.12], [0.9, -0.3], [0.44, -0.42],
-    [0.95, -0.74], [0.4, -0.72], [0.74, -1.12], [0.24, -0.92], [0.06, -0.6], [0, -0.2]];
-  const shape = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y)));
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.07, bevelEnabled: false });
-  geo.translate(0, 0, -0.035);
-  const p = geo.attributes.position, cols = [];
-  const root = new THREE.Color(0x8c8c8c), tip = new THREE.Color(0xf4f4f2), c = new THREE.Color();
-  for (let i = 0; i < p.count; i++) {
-    const t = Math.min(1, Math.hypot(p.getX(i), p.getY(i) * 0.6) / 0.8);
-    c.copy(root).lerp(tip, t * t);
-    cols.push(c.r, c.g, c.b);
-  }
-  geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
-  geo.computeVertexNormals();
-  return geo;
 }
 
 export function createCat() {
@@ -178,7 +192,7 @@ export function createCat() {
     ear.position.set(s * 0.27, 0.3, -0.02);
     ear.rotation.set(0, 0, -s * 0.38);
     add(ear, new THREE.ConeGeometry(0.17, 0.5, 4), plainFur, { pos: [0, 0.2, 0], rot: [0, Math.PI / 4, 0], outline: 0.05 });
-    add(ear, new THREE.ConeGeometry(0.1, 0.34, 3), furLight, { pos: [0, 0.16, 0.07], rot: [0.12, 0, 0], shadow: false });
+    add(ear, new THREE.ConeGeometry(0.1, 0.34, 3), std(0xc9c9c5), { pos: [0, 0.16, 0.07], rot: [0.12, 0, 0], shadow: false });
     head.add(ear);
     // Big eyes: dark rim, white, thin diamond pupil
     const eye = new THREE.Group();
@@ -186,7 +200,7 @@ export function createCat() {
     eye.rotation.y = s * 0.28;
     add(eye, new THREE.SphereGeometry(0.107, 14, 10), black, { scale: [1, 1.18, 0.35], shadow: false });
     add(eye, new THREE.SphereGeometry(0.1, 14, 10), white, { pos: [0, 0, 0.012], scale: [1, 1.18, 0.35], shadow: false });
-    add(eye, new THREE.OctahedronGeometry(0.05, 0), black, { pos: [s * -0.01, 0, 0.04], scale: [0.3, 1.3, 0.3], shadow: false });
+    add(eye, new THREE.OctahedronGeometry(0.05, 0), black, { pos: [s * -0.01, 0, 0.04], scale: [0.42, 1.9, 0.3], shadow: false });
     head.add(eye);
   });
   // Nose and the "w" mouth
@@ -197,12 +211,34 @@ export function createCat() {
     });
   });
 
-  // Spiky fur cape behind each shoulder
-  const wingGeo = furWing();
-  const wingMat = toon({ vertexColors: true, side: THREE.DoubleSide });
+  // Mane: long fur from the back of the head. Grey and striped over the
+  // shoulders, then fanning out into white spikes around the hips. The middle
+  // strands are short, so the shirt shows at the waist like in the art.
+  const strandMat = toon({ map: strandTexture(), side: THREE.DoubleSide });
+  const strand = (len, width) => {
+    const g = new THREE.ConeGeometry(width, len, 5, 1);
+    g.rotateX(Math.PI);          // apex down
+    g.translate(0, -len / 2, 0); // root at the origin
+    g.scale(1, 1, 0.75);         // a bit flattened, but still has volume from the side
+    return g;
+  };
+  // Shoulder cape the strands grow out of
+  add(body, new THREE.CylinderGeometry(0.33, 0.48, 0.4, 18, 1, true, Math.PI * 0.42, Math.PI * 1.16), std(0xffffff, { map: capeTexture(), side: THREE.DoubleSide }), {
+    pos: [0, 1.25, -0.04], rot: [-0.22, 0, 0]
+  });
+  const mane = new THREE.Group();
+  mane.position.set(0, 1.38, -0.22);
+  body.add(mane);
   [-1, 1].forEach(s => {
-    const w = add(body, wingGeo, wingMat, { pos: [0.24 * s, 1.5, -0.18], rot: [0.1, s * -0.3, s * -0.22], scale: [s * 1.05, 1.18, 1] });
-    w.userData.side = s;
+    // [fan angle from straight down, length, width, root x]
+    [[0.1, 0.45, 0.2, 0.07], [0.28, 0.95, 0.24, 0.13], [0.48, 1.15, 0.27, 0.18], [0.7, 1.2, 0.27, 0.23], [0.92, 1.05, 0.23, 0.27], [1.12, 0.8, 0.19, 0.3]]
+      .forEach(([a, len, w, x], i) => {
+        add(mane, strand(len, w), strandMat, { pos: [s * x, -i * 0.02, -0.02 * i], rot: [0.42 + i * 0.03, 0, s * a] });
+      });
+    // A second layer in between for a fuller fan
+    [[0.38, 0.9, 0.21, 0.15], [0.82, 0.95, 0.21, 0.25]].forEach(([a, len, w, x]) => {
+      add(mane, strand(len, w), strandMat, { pos: [s * x, 0.04, 0.03], rot: [0.36, 0, s * a] });
+    });
   });
 
   // Arms hang from the shoulders; one paw holds the gold ring with a green gem
