@@ -121,3 +121,19 @@ export const path = {
   end: Z_END + 8,
   heightAt: z => pathTop(z)
 };
+
+// Everything the game needs to know about a level, in one object. A level built
+// in Blender (see gltf-level.js) produces the same shape.
+export function proceduralLevel() {
+  return {
+    source: 'procedural',
+    surfaces: surfaces.map(s => ({ ...s })),
+    crumblers, movers, crateSpots, enemySpots,
+    fruitSpots: fruitSpots(),
+    gemPosition: gemPosition.clone(),
+    checkpoints: checkpoints.map(c => c.clone()),
+    bounds: { xMin: -PATH_HALF_WIDTH, xMax: PATH_HALF_WIDTH, zMin: Z_END, zMax: Z_START },
+    pathTop,
+    path
+  };
+}

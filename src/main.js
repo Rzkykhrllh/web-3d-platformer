@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import './style.css';
-import { PLAYER, FEEL } from './config.js';
+import { PLAYER, FEEL, LEVEL_URL } from './config.js';
 import { seededRandom, mat } from './util.js';
 import { createWorld } from './world.js';
 import { createPlayer } from './player.js';
@@ -10,7 +10,8 @@ import { createAudio } from './audio.js';
 import { createCrateFactory, TNT_RADIUS, BOUNCE_HITS } from './crates.js';
 import { createEnemies } from './enemies.js';
 import { createPlatforms } from './platforms.js';
-import * as L from './level.js';
+import { proceduralLevel } from './level.js';
+import { loadGltfLevel } from './gltf-level.js';
 import { buildScenery } from './scenery.js';
 import { createTextures } from './render/textures.js';
 import { createSky, SUN_DIR } from './render/sky.js';
@@ -55,11 +56,11 @@ const fx = particles.fx;
 const state = {
   started: false, done: false,
   fruit: 0, cratesBroken: 0, crateTotal: 0,
-  checkpoint: L.checkpoints[0].clone(), playTime: 0,
+  checkpoint: new THREE.Vector3(), playTime: 0,
   hitStop: 0, simTime: 0, lastStep: 0
 };
 
-let settings, tierName, tier, post, rig, player, factory, enemies, platforms, scenery, sky, water, fruits, gem;
+let level, settings, tierName, tier, post, rig, player, factory, enemies, platforms, scenery, sky, water, fruits, gem;
 const ghosts = [];
 
 const ui = createUI({
@@ -153,8 +154,16 @@ async function load() {
   water = createWater(scene, { segments: tierName === 'low' ? 80 : 160 });
   ui.setLoading(0.4, 'Planting palms…');
   await nextFrame();
-  scenery = buildScenery(scene, { textures, quality: tier, rand });
-  for (const s of L.surfaces) world.addSurface({ ...s });
+  // ?level=levels/my-level.glb loads a level built in Blender instead of the built-in one
+  const levelUrl = new URLSearchParams(location.search).get('level') || LEVEL_URL;
+  if (levelUrl) {
+    level = await loadGltfLevel(levelUrl, scene, p => ui.setLoading(0.4 + p * 0.2, 'Loading level…'));
+    scenery = { grass: null, torches: [], update() {} };
+  } else {
+    level = proceduralLevel();
+    scenery = buildScenery(scene, { textures, quality: tier, rand });
+  }
+  for (const s of level.surfaces) world.addSurface({ ...s });
   ui.setLoading(0.65, 'Hiding fruit…');
   await nextFrame();
   buildEntities();
@@ -176,20 +185,20 @@ async function load() {
 
 function buildEntities() {
   factory = createCrateFactory(scene, world, fx);
-  for (const s of L.crateSpots) {
-    const c = factory.make(s, s.base ?? L.pathTop(s.z));
+  for (const s of level.crateSpots) {
+    const c = factory.make(s, s.base ?? level.pathTop(s.z));
     if (c.ghost) ghosts.push(c);
   }
   state.crateTotal = world.crates.filter(c => c.counted).length;
   ui.setCrates(0, state.crateTotal);
 
-  platforms = createPlatforms(scene, world, null, {
+  platforms = createPlatforms(scene, world, level, {
     crumble: () => audio.play('land', 0.3),
     crumbleFall: pos => fx.dust(pos, 6, 0x9c8a74)
   });
 
   enemies = createEnemies(scene);
-  L.enemySpots.forEach(e => enemies.add(e));
+  level.enemySpots.forEach(e => enemies.add(e));
 
   // Fruit: two instanced meshes (fruit and leaf) for all of them
   const fruitGeo = new THREE.SphereGeometry(0.28, 16, 12);
@@ -197,7 +206,7 @@ function buildEntities() {
   const leafGeo = new THREE.ConeGeometry(0.1, 0.24, 6);
   leafGeo.rotateZ(0.3);
   leafGeo.translate(0.03, 0.3, 0);
-  const spots = L.fruitSpots();
+  const spots = level.fruitSpots;
   const fruitMesh = new THREE.InstancedMesh(fruitGeo,
     new THREE.MeshStandardMaterial({ color: 0xff7a2f, roughness: 0.35, emissive: 0xff4a00, emissiveIntensity: 0.35 }), spots.length);
   const leafMesh = new THREE.InstancedMesh(leafGeo, mat(0x3bb36a, { flatShading: false }), spots.length);
@@ -212,19 +221,21 @@ function buildEntities() {
     new THREE.MeshStandardMaterial({ color: 0x7fd3ff, emissive: 0x3a8bff, emissiveIntensity: 2.2, roughness: 0.1, metalness: 0.3 })
   );
   gem.castShadow = true;
-  gem.position.copy(L.gemPosition);
+  gem.position.copy(level.gemPosition);
   scene.add(gem);
 
   player = createPlayer(scene, world, playerEvents);
+  state.checkpoint.copy(level.checkpoints[0]);
   player.reset(state.checkpoint);
-  rig = createCameraRig(camera, L.path);
+  rig = createCameraRig(camera, level.path);
 }
 
 // Player events
 const playerEvents = {
   clamp(p) {
-    p.x = THREE.MathUtils.clamp(p.x, -L.PATH_HALF_WIDTH, L.PATH_HALF_WIDTH);
-    p.z = THREE.MathUtils.clamp(p.z, L.Z_END, L.Z_START);
+    const b = level.bounds;
+    p.x = THREE.MathUtils.clamp(p.x, b.xMin, b.xMax);
+    p.z = THREE.MathUtils.clamp(p.z, b.zMin, b.zMax);
   },
   jump(p) { audio.play('jump'); fx.dust(p, 3); },
   land(p, impact) {
@@ -436,8 +447,15 @@ function simulate(dt) {
   if (ticked) audio.play('tick');
   for (const c of exploded) explodeTnt(c);
 
-  // Footsteps and running dust, in time with the stride
   const s = player.state;
+  // Fallback checkpoints count once Pip is standing past them (levels run toward -z)
+  if (s.onGround) {
+    for (const cp of level.checkpoints) {
+      if (s.pos.z < cp.z - 0.5 && cp.z < state.checkpoint.z) state.checkpoint.copy(cp);
+    }
+  }
+
+  // Footsteps and running dust, in time with the stride
   if (s.state === 'run') {
     const stepIndex = Math.floor(s.walk / Math.PI);
     if (stepIndex !== state.lastStep) { state.lastStep = stepIndex; audio.play('step'); fx.dust(s.pos, 1, dustColor(s.pos)); }
@@ -493,7 +511,7 @@ function frame() {
   // Ambient animation
   updateFruit(dt);
   gem.rotation.y = t * 1.5;
-  gem.position.y = L.gemPosition.y + Math.sin(t * 2) * 0.15;
+  gem.position.y = level.gemPosition.y + Math.sin(t * 2) * 0.15;
   if (Math.random() < 0.08 && gem.visible) fx.sparkle(gem.position, 0x9fe3ff, 1);
   for (const tr of scenery.torches) if (Math.random() < dt * 4) fx.sparkle(tr.pos, 0xffb347, 1);
   particles.update(dt);
@@ -517,13 +535,13 @@ load().then(() => {
   // Dev-only hook for stepping the simulation from the console
   if (import.meta.env.DEV) {
     window.__game = {
-      state, player, world, enemies, crates: world.crates, ui, renderer,
+      state, player, world, enemies, crates: world.crates, ui, renderer, level,
       step: (dt = 1 / 60) => simulate(dt),
       render: () => (tier.post ? post.render() : renderer.render(scene, camera))
     };
   }
   if (new URLSearchParams(location.search).has('debug')) {
-    import('./debug.js').then(m => m.createDebugPanel({ player, rig, state, applyTier, renderer, post, sun, hemi, L }));
+    import('./debug.js').then(m => m.createDebugPanel({ player, rig, state, applyTier, renderer, post, sun, hemi }));
   }
   requestAnimationFrame(frame);
 });

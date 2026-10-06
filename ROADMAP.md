@@ -1,112 +1,100 @@
 # Roadmap: dari POC ke game yang terasa profesional
 
-Urutannya sengaja: fondasi dulu, baru aset. Aset bagus di atas fondasi yang masih hardcode bakal dikerjain dua kali.
-
 Label: **[P1]** wajib untuk kesan "game beneran", **[P2]** nambah kualitas jelas, **[P3]** nice to have.
+Tanda 👤 = butuh keputusan, aset, atau akun dari kamu.
 
 ---
 
-## 0. Keputusan awal (sebelum ngoding lagi)
+## 0. Keputusan awal
 
-- [ ] **[P1]** Tentukan art direction. Pilihannya:
-  - Stylized "toon" ala Crash N. Sane: warna jenuh, tekstur hand-painted, outline tipis
-  - Stylized PBR ala game indie modern: material realistis tapi bentuknya kartun
-  - Bikin 1 moodboard (5–10 screenshot referensi) dan jadikan patokan semua aset
-- [ ] **[P1]** Tentukan sumber aset: bikin sendiri di Blender, beli/pakai pack CC0, atau commission karakter utama
-- [ ] **[P2]** Tentukan nasib tema Crash (nama, karakter) sebelum bikin karakter final
+- [ ] 👤 **[P1]** Art direction: toon/hand-painted ala Crash N. Sane, atau stylized PBR. Bikin moodboard 5–10 screenshot
+- [ ] 👤 **[P1]** Sumber aset: bikin sendiri di Blender, pack CC0, atau commission karakter utama
+- [ ] 👤 **[P2]** Tema Crash (nama, karakter) atau original
 
 ## 1. Fondasi teknis
 
-- [ ] **[P1]** Level dibangun dari file `.glb` hasil Blender, bukan koordinat di `level.js`
-  - Collider, spawn peti, buah, checkpoint ditandai lewat nama object / custom property di Blender
-- [ ] **[P1]** Loader aset + loading screen dengan progress bar
-- [ ] **[P1]** Kompresi aset: Draco/Meshopt untuk mesh, KTX2 untuk tekstur
-- [ ] **[P1]** Collision yang proper: Rapier (physics engine WASM) atau capsule-vs-mesh sendiri. Sekarang masih kotak AABB.
-- [ ] **[P2]** State machine untuk player (idle, run, jump, fall, spin, hurt, dead, victory)
-- [ ] **[P2]** Pindah ke TypeScript sebelum kodenya membesar
-- [ ] **[P2]** Quality tier otomatis (low/medium/high) berdasarkan device dan FPS
-- [ ] **[P3]** Debug panel (lil-gui): tweak kecepatan, gravitasi, lighting secara live
+- [x] **[P1]** Level bisa dibangun di Blender → `.glb` (konvensi nama ada di README, contoh: `scripts/make-sample-level.mjs`)
+- [x] **[P1]** Loading screen dengan progress bar
+- [x] **[P1]** Dukungan kompresi mesh (Draco, Meshopt) di loader level
+- [ ] **[P2]** Tekstur KTX2 (baru perlu setelah ada tekstur asli)
+- [ ] **[P2]** Collision mesh (Rapier / BVH). Sekarang kotak AABB; cukup untuk level kotak-kotak, kurang untuk medan miring
+- [x] **[P2]** State machine player (idle, run, jump, fall, hurt + spin)
+- [ ] **[P2]** Pindah ke TypeScript (sengaja ditunda sampai struktur stabil)
+- [x] **[P2]** Quality tier otomatis (low/medium/high) + turun sendiri kalau FPS rendah
+- [x] **[P3]** Debug panel (`?debug`): tuning gerak, kamera, lighting, teleport
 
-## 2. Game feel (paling murah, efeknya paling kerasa)
+## 2. Game feel
 
-- [ ] **[P1]** Akselerasi dan deselerasi, bukan langsung kecepatan penuh
-- [ ] **[P1]** Coyote time (masih bisa lompat sesaat setelah lewat tepi) dan jump buffer
-- [ ] **[P1]** Tinggi lompat variabel (tahan Space = lebih tinggi)
-- [ ] **[P1]** Bayangan bulat di bawah karakter saat di udara, supaya pendaratan gampang dibaca
-- [ ] **[P1]** Kamera: look-ahead ke arah lari, lebih smooth saat naik turun, nggak nembus tembok
-- [ ] **[P2]** Hit-stop singkat waktu peti pecah, squash and stretch saat mendarat
-- [ ] **[P2]** Partikel: debu saat lari/mendarat, serpihan kayu, percikan buah, ledakan TNT yang proper
-- [ ] **[P2]** Getar di HP (Vibration API) untuk ledakan dan pendaratan
+- [x] **[P1]** Akselerasi dan deselerasi
+- [x] **[P1]** Coyote time dan jump buffer
+- [x] **[P1]** Tinggi lompat variabel
+- [x] **[P1]** Bayangan bulat di bawah karakter
+- [x] **[P1]** Kamera: tinggi ikut tanah (bukan tiap lompatan), look-ahead, shake
+- [x] **[P2]** Hit-stop, squash and stretch
+- [x] **[P2]** Partikel: debu lari/mendarat, serpihan, kilau buah, ledakan, bintang musuh, jejak spin
+- [x] **[P2]** Getar di HP
 
 ## 3. Visual dan rendering
 
-- [ ] **[P1]** Post-processing: tone mapping ACES/AgX, bloom halus, color grading (LUT)
-- [ ] **[P1]** Skybox atau HDRI + environment map supaya material punya pantulan
-- [ ] **[P1]** Lighting baked (lightmap dari Blender) untuk level statis, real-time cuma untuk yang bergerak
-- [ ] **[P1]** Shader air: gelombang, busa di tepi, transparansi
-- [ ] **[P2]** Vegetasi pakai instancing + shader angin, jumlahnya bisa ratusan tanpa drop FPS
-- [ ] **[P2]** Ambient occlusion (SSAO/N8AO) dan fog berlapis untuk kedalaman
-- [ ] **[P2]** Outline atau rim light di karakter supaya selalu menonjol dari background
-- [ ] **[P3]** Day/night atau variasi suasana per section (pantai siang, hutan teduh, reruntuhan sore)
+- [x] **[P1]** Post-processing: tone mapping, bloom, color grade + vignette
+- [x] **[P1]** Langit gradien + environment map untuk pantulan
+- [ ] 👤 **[P1]** Lighting baked (lightmap dari Blender), setelah level dibuat di Blender
+- [x] **[P1]** Shader air dengan gelombang
+- [x] **[P2]** Rumput, semak, palem instanced + shader angin
+- [ ] **[P2]** Ambient occlusion (SSAO / N8AO)
+- [x] **[P2]** Outline di karakter dan peti
+- [ ] **[P3]** Variasi suasana per section (pagi, teduh, sore)
 
-## 4. Aset
+## 4. Aset (sekarang semua placeholder buatan kode)
 
-- [ ] **[P1]** Karakter utama: model rigged + animasi idle, run, jump, fall, land, spin, hurt, victory
-  - Mixamo cuma cocok untuk humanoid; karakter hewan perlu animasi buatan atau commission
-- [ ] **[P1]** Peti versi final: biasa, "?", TNT, plus varian baru (lihat bagian 5)
-- [ ] **[P1]** Modular kit lingkungan: potongan jalur, tebing, batu, akar, jembatan kayu, reruntuhan
-- [ ] **[P2]** Vegetasi: 3–4 jenis palem, semak, pakis, bunga, rumput
-- [ ] **[P2]** Props: totem, obor, tanda kayu, tong, tali
-- [ ] **[P2]** Tekstur CC0 dari Poly Haven / ambientCG; model CC0 dari Kenney, Quaternius, Poly Pizza sebagai pengisi
-- [ ] **[P3]** Logo dan judul game buatan sendiri
+- [ ] 👤 **[P1]** Karakter utama: model rigged + animasi idle, run, jump, fall, land, spin, hurt, victory
+- [ ] 👤 **[P1]** Peti final (sekarang tekstur canvas)
+- [ ] 👤 **[P1]** Modular kit lingkungan: jalur, tebing, batu, akar, jembatan, reruntuhan
+- [ ] 👤 **[P2]** Vegetasi final (sekarang palem dan semak prosedural)
+- [ ] 👤 **[P2]** Props: totem, obor, tanda kayu, tong, tali
+- [ ] 👤 **[P2]** Tekstur asli (ambientCG / Poly Haven) menggantikan tekstur noise di `src/render/textures.js`
+- [ ] 👤 **[P3]** Logo dan judul game
 
 ## 5. Level design
 
-- [ ] **[P1]** Jalur melengkung (spline), bukan garis lurus, dengan kamera yang ikut belokan
-- [ ] **[P1]** 3–4 section dengan ritme jelas: intro (aman), tantangan, jeda, klimaks
-- [ ] **[P1]** Rintangan bergerak: platform naik turun, platform yang runtuh, kayu berputar
-- [ ] **[P2]** Musuh sederhana: kepiting yang mondar-mandir, tanaman yang menggigit (bisa di-spin)
-- [ ] **[P2]** Varian peti: peti pantul, peti besi (nggak bisa dipecah), peti checkpoint, peti "!" yang memunculkan jembatan
-- [ ] **[P2]** Segmen kejar-kejaran: batu besar menggelinding ke arah kamera, lari menghadap kamera
-- [ ] **[P2]** Area rahasia + hadiah kalau semua peti pecah (gem bonus)
-- [ ] **[P3]** Sistem nyawa dan "game over" yang ringan (atau sengaja nggak ada, demi recruiter)
+- [ ] 👤 **[P1]** Desain level final bareng kamu (sekarang 7 section di `src/level.js`)
+- [ ] **[P1]** Jalur melengkung (spline) + kamera ikut belokan
+- [x] **[P1]** Section dengan ritme: intro, jurang, hutan, reruntuhan, jurang 2, finish
+- [x] **[P1]** Platform bergerak dan platform runtuh
+- [x] **[P2]** Musuh: kepiting (injak atau spin)
+- [x] **[P2]** Varian peti: pantul, besi, checkpoint, "!" + peti hantu
+- [ ] **[P2]** Segmen kejar-kejaran batu menggelinding
+- [ ] **[P2]** Area rahasia / gem bonus (sekarang: toast "All crates!" + rank gold)
+- [ ] **[P3]** Sistem nyawa (sengaja belum, demi recruiter)
 
 ## 6. Audio
 
-- [ ] **[P1]** SFX: langkah, lompat, mendarat, peti pecah, buah, spin, TNT berdetak, ledakan, gem
-- [ ] **[P1]** Musik latar tropis yang loop, dengan tombol mute yang jelas
-- [ ] **[P2]** Audio diputar setelah interaksi pertama (aturan autoplay browser), volume terpisah musik/SFX
-- [ ] **[P3]** Suara posisional (TNT di kiri terdengar dari kiri)
+- [x] **[P1]** SFX lengkap (sintesis, placeholder sampai ada rekaman)
+- [x] **[P1]** Musik latar loop (generated) + tombol mute
+- [ ] 👤 **[P1]** Musik dan SFX asli (set `AUDIO.musicUrl` di `src/config.js`)
+- [x] **[P2]** Audio mulai setelah interaksi pertama, volume musik/SFX terpisah
+- [x] **[P3]** Stereo pan untuk peti dan ledakan
 
 ## 7. UI dan presentasi
 
-- [ ] **[P1]** Main menu dengan kamera sinematik, bukan papan kayu statis
-- [ ] **[P1]** Kartu konten yang lebih kaya: gambar/screenshot project, link ke detail
-- [ ] **[P2]** Halaman detail project (bisa di luar game, HTML biasa)
-- [ ] **[P2]** Pause menu: lanjut, restart, pengaturan (audio, kualitas grafis), kontrol
-- [ ] **[P2]** Layar finish dengan stats dan rank (misal waktu + persentase peti)
-- [ ] **[P3]** Transisi antar layar (fade, iris wipe ala game klasik)
+- [x] **[P1]** Main menu di atas fly-through level
+- [ ] 👤 **[P1]** Kartu konten dengan gambar/screenshot project
+- [ ] **[P2]** Halaman detail per project
+- [x] **[P2]** Pause menu + settings (musik, SFX, grafis, screen shake), disimpan di browser
+- [x] **[P2]** Layar finish: waktu, buah, peti, konten, medali
+- [ ] **[P3]** Transisi antar layar ala game klasik
 
 ## 8. Konten portfolio
 
-- [ ] **[P1]** Ganti semua placeholder di `src/content.js` dengan isi asli
-- [ ] **[P1]** Screenshot/diagram untuk tiap project (tanpa info rahasia kantor)
-- [ ] **[P2]** CV yang bisa diunduh di layar finish dan di "See everything"
+- [ ] 👤 **[P1]** Ganti placeholder di `src/content.js` dengan isi asli
+- [ ] 👤 **[P1]** Screenshot/diagram tiap project (tanpa info rahasia kantor)
+- [ ] 👤 **[P2]** CV yang bisa diunduh
 
 ## 9. Rilis
 
-- [ ] **[P1]** Deploy (Vercel, Netlify, atau GitHub Pages) + domain sendiri
-- [ ] **[P1]** Versi non-game yang ramah SEO dan screen reader (HTML biasa berisi konten yang sama)
-- [ ] **[P1]** Uji di HP kelas menengah: target 60 FPS di desktop, 30+ di HP
-- [ ] **[P2]** Open Graph image dan meta tag supaya link-nya bagus saat dibagikan
-- [ ] **[P2]** Analytics ringan (Plausible / Umami): berapa yang main vs langsung "See everything"
+- [ ] 👤 **[P1]** Deploy (Vercel / Netlify / GitHub Pages) + domain. Build sudah pakai path relatif, jadi tinggal upload `dist/`
+- [x] **[P1]** Versi non-game: `/portfolio.html` + isi `<noscript>`, dibuat otomatis saat build
+- [ ] 👤 **[P1]** Uji di HP kelas menengah (target 30+ FPS)
+- [ ] **[P2]** Gambar Open Graph (`public/og-image.png`, 1200×630) setelah visual final; meta tag lain sudah ada
+- [ ] 👤 **[P2]** Analytics ringan (Plausible / Umami)
 - [ ] **[P3]** Leaderboard waktu tercepat
-
----
-
-## Urutan kerja yang disarankan
-
-1. Bagian 0 (keputusan) + bagian 2 (game feel). Murah, langsung kerasa, nggak bergantung aset.
-2. Bagian 1 (pipeline Blender → glb). Setelah ini level bisa didesain di Blender.
-3. Satu section level dibikin "vertical slice": aset final, lighting, audio, efek. Jadikan patokan kualitas.
-4. Duplikasi kualitas itu ke section lain, lalu bagian 7–9.

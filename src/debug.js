@@ -4,7 +4,7 @@ import { TIERS } from './quality.js';
 
 // Live tuning panel, opened with ?debug in the URL. Changes are not saved;
 // copy good values back into config.js.
-export function createDebugPanel({ player, state, applyTier, renderer, post, sun, hemi, L }) {
+export function createDebugPanel({ player, state, applyTier, renderer, post, sun, hemi }) {
   const gui = new GUI({ title: 'Debug' });
 
   const move = gui.addFolder('Player');
