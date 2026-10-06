@@ -1,0 +1,5 @@
+{
+  // Only show this repo in Source Control, never repos of files opened from elsewhere
+  "git.autoRepositoryDetection": "subFolders",
+  "git.openRepositoryInParentFolders": "never"
+}
