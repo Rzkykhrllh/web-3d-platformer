@@ -37,7 +37,7 @@ function tabbyTexture(head = false) {
     };
     if (head) {
       const face = s * 0.25;
-      for (const [dx, w, len] of [[0, 8, 0.5], [-14, 6, 0.44], [14, 6, 0.44], [-28, 5, 0.38], [28, 5, 0.38], [-42, 4, 0.3], [42, 4, 0.3]]) {
+      for (const [dx, w, len] of [[0, 11, 0.62], [-15, 8, 0.52], [15, 8, 0.52], [-30, 7, 0.44], [30, 7, 0.44], [-44, 5, 0.34], [44, 5, 0.34]]) {
         stripe(face + dx, w, len, dx * 0.2);
       }
       // Down the sides and back of the head, longest at the back (u = 0.75)
@@ -61,26 +61,12 @@ function tabbyTexture(head = false) {
   });
 }
 
-// Shoulder part of the mane: grey with stripes running down from the neck
-function capeTexture() {
-  return canvasTexture(256, (ctx, s) => {
-    ctx.fillStyle = '#9a9a9a'; ctx.fillRect(0, 0, s, s);
-    ctx.fillStyle = '#4f4f4f';
-    for (let i = 0; i < 9; i++) {
-      const x = s * (0.06 + i * 0.11), w = 6 + (i % 3) * 2;
-      ctx.beginPath();
-      ctx.moveTo(x - w, 0); ctx.lineTo(x + w, 0); ctx.lineTo(x + Math.sin(i * 2) * 8, s * (0.55 + (i % 2) * 0.2));
-      ctx.closePath(); ctx.fill();
-    }
-  });
-}
-
-// One strand of the mane: cape grey at the root, fading to white at the tip.
+// One white blade at the end of a mane lock: grey at the root, white soon after.
 // A cone's v runs 0 at the wide base to 1 at the apex; the canvas top is v = 1.
-function strandTexture() {
+function bladeTexture() {
   return canvasTexture(128, (ctx, s) => {
     const g = ctx.createLinearGradient(0, s, 0, 0);
-    g.addColorStop(0, '#9a9a9a'); g.addColorStop(0.4, '#a8a8a6'); g.addColorStop(0.68, '#f2f2f0'); g.addColorStop(1, '#ffffff');
+    g.addColorStop(0, '#8f8f8f'); g.addColorStop(0.18, '#cfcfcc'); g.addColorStop(0.4, '#f4f4f2'); g.addColorStop(1, '#ffffff');
     ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
   });
 }
@@ -134,7 +120,6 @@ export function createCat() {
   shirtMap.wrapS = THREE.RepeatWrapping;
   shirtMap.repeat.set(4, 1);
   const shirt = std(0xffffff, { map: shirtMap, side: THREE.DoubleSide });
-  const plainFur = std(C.fur);
   const tee = std(C.tee);
   const shorts = std(C.shorts);
   const gold = std(C.gold);
@@ -174,70 +159,87 @@ export function createCat() {
     add(body, new THREE.BoxGeometry(0.04, 0.11, 0.12), std(0xb59e74), { pos: [0.33 * s, 0.5, 0.02] });
   });
 
-  // Head: wide, slightly squashed, tabby stripes on the forehead
+  // Head: wide with a flatter crown and a narrower chin; with the ears at its
+  // outer corners and the cheek tufts it reads as a "W" from the front
   const head = new THREE.Group();
   head.position.set(0, 1.5, 0.02);
   body.add(head);
-  add(head, new THREE.SphereGeometry(0.42, 14, 10), furHead, { scale: [1.18, 0.92, 0.95], outline: 0.035 });
-  // Pale muzzle and cheek fluff
-  add(head, new THREE.SphereGeometry(0.2, 12, 8), std(0xd6d6d2), { pos: [0, -0.2, 0.27], scale: [1.05, 0.55, 0.65] });
+  const skull = new THREE.SphereGeometry(0.42, 18, 12);
+  const sp = skull.attributes.position;
+  for (let i = 0; i < sp.count; i++) {
+    const n = sp.getY(i) / 0.42;
+    if (n < 0) { sp.setX(i, sp.getX(i) * (1 + n * 0.3)); sp.setZ(i, sp.getZ(i) * (1 + n * 0.1)); }
+    if (n > 0.5) sp.setY(i, 0.42 * (0.5 + (n - 0.5) * 0.55));
+  }
+  skull.computeVertexNormals();
+  add(head, skull, furHead, { scale: [1.22, 0.98, 0.95], outline: 0.03 });
+  // Pale muzzle and paler fur around the eyes
+  add(head, new THREE.SphereGeometry(0.2, 14, 10), std(0xe6e6e2), { pos: [0, -0.14, 0.27], scale: [1.45, 0.8, 0.6] });
+  const earGeo = (r, h) => { const g = new THREE.ConeGeometry(r, h, 4, 1); g.rotateY(Math.PI / 4); g.scale(1, 1, 0.45); g.translate(0, h / 2, 0); return g; };
   [-1, 1].forEach(s => {
-    for (let i = 0; i < 3; i++) {
-      add(head, new THREE.ConeGeometry(0.09, 0.34, 4), i === 0 ? plainFur : furLight, {
-        pos: [s * (0.47 + i * 0.02), -0.12 - i * 0.1, 0.1], rot: [0, 0, s * (1.75 + i * 0.3)]
-      });
-    }
-    // Ears: tall, pointing up and out, pale inside
+    // Ears: big, wide at the base, at the outer top corners, tips leaning out
     const ear = new THREE.Group();
-    ear.position.set(s * 0.27, 0.3, -0.02);
-    ear.rotation.set(0, 0, -s * 0.38);
-    add(ear, new THREE.ConeGeometry(0.17, 0.5, 4), plainFur, { pos: [0, 0.2, 0], rot: [0, Math.PI / 4, 0], outline: 0.05 });
-    add(ear, new THREE.ConeGeometry(0.1, 0.34, 3), std(0xc9c9c5), { pos: [0, 0.16, 0.07], rot: [0.12, 0, 0], shadow: false });
+    ear.position.set(s * 0.31, 0.2, -0.04);
+    ear.rotation.z = -s * 0.2;
+    add(ear, earGeo(0.24, 0.62), fur, { outline: 0.05 });
+    add(ear, earGeo(0.14, 0.42), std(0xd6d0cc), { pos: [0, 0.03, 0.05], shadow: false });
     head.add(ear);
-    // Big eyes: dark rim, white, thin diamond pupil
+    // Cheek tufts: striped spikes pointing out and a little down
+    [[-0.04, 0.4, 0.38], [-0.17, 0.8, 0.3]].forEach(([y, droop, len]) => {
+      add(head, new THREE.ConeGeometry(0.12, len, 4), fur, { pos: [s * 0.47, y, 0.04], rot: [0, 0, -s * (Math.PI / 2 + droop)], scale: [1, 1, 0.6] });
+    });
+    // Eyes: tall ovals, thin dark rim, a narrow slit pupil
     const eye = new THREE.Group();
-    eye.position.set(s * 0.17, 0.02, 0.36);
-    eye.rotation.y = s * 0.28;
-    add(eye, new THREE.SphereGeometry(0.107, 14, 10), black, { scale: [1, 1.18, 0.35], shadow: false });
-    add(eye, new THREE.SphereGeometry(0.1, 14, 10), white, { pos: [0, 0, 0.012], scale: [1, 1.18, 0.35], shadow: false });
-    add(eye, new THREE.OctahedronGeometry(0.05, 0), black, { pos: [s * -0.01, 0, 0.04], scale: [0.42, 1.9, 0.3], shadow: false });
+    eye.position.set(s * 0.165, -0.02, 0.355);
+    eye.rotation.y = s * 0.3;
+    add(eye, new THREE.SphereGeometry(0.084, 14, 10), black, { scale: [0.82, 1.15, 0.35], shadow: false });
+    add(eye, new THREE.SphereGeometry(0.076, 14, 10), white, { pos: [0, 0, 0.01], scale: [0.82, 1.15, 0.35], shadow: false });
+    add(eye, new THREE.OctahedronGeometry(0.045, 0), black, { pos: [s * -0.006, 0, 0.032], scale: [0.3, 1.4, 0.3], shadow: false });
     head.add(eye);
   });
   // Nose and the "w" mouth
-  add(head, new THREE.ConeGeometry(0.035, 0.04, 3), black, { pos: [0, -0.09, 0.44], rot: [-Math.PI / 2, 0, Math.PI], shadow: false });
+  add(head, new THREE.ConeGeometry(0.032, 0.04, 3), black, { pos: [0, -0.09, 0.44], rot: [-Math.PI / 2, 0, Math.PI], shadow: false });
   [-1, 1].forEach(s => {
-    add(head, new THREE.TorusGeometry(0.035, 0.008, 4, 10, Math.PI), black, {
-      pos: [s * 0.035, -0.15, 0.43], rot: [0, 0, Math.PI], shadow: false
+    add(head, new THREE.TorusGeometry(0.03, 0.007, 4, 10, Math.PI), black, {
+      pos: [s * 0.03, -0.14, 0.43], rot: [0, 0, Math.PI], shadow: false
     });
   });
 
-  // Mane: long fur from the back of the head. Grey and striped over the
-  // shoulders, then fanning out into white spikes around the hips. The middle
-  // strands are short, so the shirt shows at the waist like in the art.
-  const strandMat = toon({ map: strandTexture(), side: THREE.DoubleSide });
-  const strand = (len, width) => {
-    const g = new THREE.ConeGeometry(width, len, 5, 1);
+  // Mane: two long locks hang from behind the cheeks, one each side, grey and
+  // striped down to the waist (covering the arms from behind). There each
+  // breaks into white blades that fan out sideways and back, down to the
+  // ankles. The middle of the back stays clear, so the shirt shows.
+  const bladeMat = toon({ map: bladeTexture(), side: THREE.DoubleSide });
+  const blade = (len, width) => {
+    const g = new THREE.ConeGeometry(width, len, 4, 1);
     g.rotateX(Math.PI);          // apex down
     g.translate(0, -len / 2, 0); // root at the origin
-    g.scale(1, 1, 0.75);         // a bit flattened, but still has volume from the side
+    g.scale(1, 1, 0.25); // flat, like layered sheets
     return g;
   };
-  // Shoulder cape the strands grow out of
-  add(body, new THREE.CylinderGeometry(0.33, 0.48, 0.4, 18, 1, true, Math.PI * 0.42, Math.PI * 1.16), std(0xffffff, { map: capeTexture(), side: THREE.DoubleSide }), {
-    pos: [0, 1.25, -0.04], rot: [-0.22, 0, 0]
-  });
-  const mane = new THREE.Group();
-  mane.position.set(0, 1.38, -0.22);
-  body.add(mane);
   [-1, 1].forEach(s => {
-    // [fan angle from straight down, length, width, root x]
-    [[0.1, 0.45, 0.2, 0.07], [0.28, 0.95, 0.24, 0.13], [0.48, 1.15, 0.27, 0.18], [0.7, 1.2, 0.27, 0.23], [0.92, 1.05, 0.23, 0.27], [1.12, 0.8, 0.19, 0.3]]
-      .forEach(([a, len, w, x], i) => {
-        add(mane, strand(len, w), strandMat, { pos: [s * x, -i * 0.02, -0.02 * i], rot: [0.42 + i * 0.03, 0, s * a] });
-      });
-    // A second layer in between for a fuller fan
-    [[0.38, 0.9, 0.21, 0.15], [0.82, 0.95, 0.21, 0.25]].forEach(([a, len, w, x]) => {
-      add(mane, strand(len, w), strandMat, { pos: [s * x, 0.04, 0.03], rot: [0.36, 0, s * a] });
+    const lock = new THREE.Group();
+    lock.position.set(s * 0.36, 1.32, -0.15);
+    lock.rotation.set(0.08, 0, s * 0.08);
+    body.add(lock);
+    const strip = new THREE.CylinderGeometry(0.15, 0.12, 0.52, 6);
+    strip.translate(0, -0.26, 0);
+    strip.scale(1, 1, 0.55);
+    add(lock, strip, fur);
+    const tips = new THREE.Group();
+    tips.position.y = -0.46;
+    lock.add(tips);
+    const deg = THREE.MathUtils.degToRad;
+    // Sheets fanning out sideways in the body's plane, flat side to the back:
+    // [degrees out from straight down, length, width]
+    [[10, 0.85, 0.3], [24, 0.95, 0.36], [38, 0.95, 0.38], [52, 0.85, 0.36], [66, 0.7, 0.3]].forEach(([fan, len, w], i) => {
+      add(tips, blade(len, w), bladeMat, { pos: [0, 0, -0.02 * i], rot: [0.22, 0, s * deg(fan)] });
+    });
+    // Sheets sweeping back, for the spiky half-circle seen from above:
+    // [degrees round from straight back toward the side, tilt from vertical, length, width]
+    [[6, 58, 0.85, 0.3], [28, 62, 0.92, 0.32], [52, 66, 0.86, 0.3], [76, 68, 0.74, 0.28]].forEach(([round, tilt, len, w]) => {
+      const m = add(tips, blade(len, w), bladeMat);
+      m.rotation.set(deg(tilt), -s * deg(round), 0, 'YXZ');
     });
   });
 
