@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { toon } from './toon.js';
 
 // Animated sea: toon material (so it gets lighting and fog) with waves added in
-// the vertex shader and caustic bands and crest highlights in the fragment shader.
+// the vertex shader and soft colour variation and crest highlights in the fragment shader.
 
 export function createWater(scene, { size = 600, segments = 160, y = -2.3 } = {}) {
   const geo = new THREE.PlaneGeometry(size, size, segments, segments);
@@ -59,14 +59,15 @@ export function createWater(scene, { size = 600, segments = 160, y = -2.3 } = {}
         }`)
       .replace('#include <color_fragment>', /* glsl */`
         #include <color_fragment>
+        // Soft colour variation drifting sideways only. (It used to drift
+        // diagonally, along -z too, so its shapes seemed to follow the player
+        // running down the path; any highlight drawn from it, blobs or contour
+        // lines, read as rings tagging along.)
         vec2 q = vWorld.xz * 0.35;
-        float n = vnoise(q + uTime * 0.25) * 0.6 + vnoise(q * 2.3 - uTime * 0.35) * 0.4;
-        // Thin caustic lines along one level of the noise. (A threshold on the
-        // noise instead made lone blobs, which toon shading turned into flat white ovals.)
-        float bands = (1.0 - smoothstep(0.0, 0.035, abs(n - 0.55))) * 0.3;
+        float n = vnoise(q + vec2(uTime * 0.25, 0.0)) * 0.6 + vnoise(q * 2.3 - vec2(uTime * 0.35, 0.0)) * 0.4;
         float crest = smoothstep(0.15, 0.32, vWorld.y + 2.3);
-        diffuseColor.rgb = mix(diffuseColor.rgb * 0.75, diffuseColor.rgb * 1.15, n);
-        diffuseColor.rgb += vec3(0.75, 0.95, 1.0) * (bands + crest * 0.25);`);
+        diffuseColor.rgb = mix(diffuseColor.rgb * 0.8, diffuseColor.rgb * 1.12, n);
+        diffuseColor.rgb += vec3(0.75, 0.95, 1.0) * crest * 0.25;`);
   };
 
   const mesh = new THREE.Mesh(geo, mat);
