@@ -55,7 +55,7 @@ const fx = particles.fx;
 const state = {
   started: false, done: false,
   fruit: 0, cratesBroken: 0, crateTotal: 0,
-  checkpoint: L.checkpoints[0].clone(), startTime: 0,
+  checkpoint: L.checkpoints[0].clone(), playTime: 0,
   hitStop: 0, simTime: 0, lastStep: 0
 };
 
@@ -191,24 +191,20 @@ function buildEntities() {
   enemies = createEnemies(scene);
   L.enemySpots.forEach(e => enemies.add(e));
 
-  // Fruit
+  // Fruit: two instanced meshes (fruit and leaf) for all of them
   const fruitGeo = new THREE.SphereGeometry(0.28, 16, 12);
-  const fruitMat = new THREE.MeshStandardMaterial({ color: 0xff7a2f, roughness: 0.35, emissive: 0xff4a00, emissiveIntensity: 0.35 });
+  fruitGeo.scale(1, 0.85, 1);
   const leafGeo = new THREE.ConeGeometry(0.1, 0.24, 6);
-  const leafMat = mat(0x3bb36a, { flatShading: false });
-  fruits = L.fruitSpots().map((pos, i) => {
-    const g = new THREE.Group();
-    const ball = new THREE.Mesh(fruitGeo, fruitMat);
-    ball.scale.set(1, 0.85, 1);
-    ball.castShadow = true;
-    const leaf = new THREE.Mesh(leafGeo, leafMat);
-    leaf.position.y = 0.3; leaf.rotation.z = 0.3;
-    g.add(ball, leaf);
-    g.position.copy(pos);
-    g.userData = { base: pos.clone(), phase: i * 0.7, taken: false, pop: 0 };
-    scene.add(g);
-    return g;
-  });
+  leafGeo.rotateZ(0.3);
+  leafGeo.translate(0.03, 0.3, 0);
+  const spots = L.fruitSpots();
+  const fruitMesh = new THREE.InstancedMesh(fruitGeo,
+    new THREE.MeshStandardMaterial({ color: 0xff7a2f, roughness: 0.35, emissive: 0xff4a00, emissiveIntensity: 0.35 }), spots.length);
+  const leafMesh = new THREE.InstancedMesh(leafGeo, mat(0x3bb36a, { flatShading: false }), spots.length);
+  fruitMesh.castShadow = true;
+  for (const m of [fruitMesh, leafMesh]) { m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; scene.add(m); }
+  fruits = spots.map((pos, i) => ({ position: pos.clone(), base: pos.clone(), phase: i * 0.7, taken: false, pop: 0, visible: true, scale: 1, rot: 0 }));
+  fruits.meshes = [fruitMesh, leafMesh];
 
   // Gem
   gem = new THREE.Mesh(
@@ -390,11 +386,10 @@ function collectFruit() {
   const p = player.state.pos;
   const cx = p.x, cy = p.y + 0.8, cz = p.z;
   for (const f of fruits) {
-    const u = f.userData;
-    if (u.taken) continue;
+    if (f.taken) continue;
     const dx = f.position.x - cx, dy = f.position.y - cy, dz = f.position.z - cz;
     if (dx * dx + dy * dy + dz * dz > 1.25) continue;
-    u.taken = true;
+    f.taken = true;
     addFruit(1, f.position);
   }
 }
@@ -402,7 +397,7 @@ function collectFruit() {
 // Flow
 function startGame() {
   state.started = true;
-  state.startTime = performance.now();
+  state.playTime = 0;
   rig.setMode('follow', player.state);
   audio.unlock();
 }
@@ -422,7 +417,7 @@ function finish() {
   gem.visible = false;
   rig.setMode('finish');
   ui.showFinish({
-    secs: Math.round((performance.now() - state.startTime) / 1000),
+    secs: Math.round(state.playTime),
     fruit: state.fruit, fruitTotal: fruits.length + BOUNCE_HITS,
     crates: state.cratesBroken, crateTotal: state.crateTotal
   });
@@ -431,6 +426,7 @@ function finish() {
 // One simulation step of gameplay
 function simulate(dt) {
   state.simTime += dt;
+  state.playTime += dt;
   platforms.update(dt, state.simTime);
   player.update(dt, readInput());
   enemies.update(dt);
@@ -447,6 +443,28 @@ function simulate(dt) {
     if (stepIndex !== state.lastStep) { state.lastStep = stepIndex; audio.play('step'); fx.dust(s.pos, 1, dustColor(s.pos)); }
   }
   if (!state.done && gem.position.distanceTo(s.pos.clone().setY(s.pos.y + 0.8)) < 1.4) finish();
+}
+
+const fruitMatrix = new THREE.Matrix4(), fruitQuat = new THREE.Quaternion(), fruitScale = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+function updateFruit(dt) {
+  fruits.forEach((f, i) => {
+    if (f.taken) {
+      if (f.visible) {
+        f.pop += dt * 5;
+        f.position.y += dt * 5;
+        f.scale = Math.max(0, 1 - f.pop);
+        if (f.pop >= 1) f.visible = false;
+      }
+    } else {
+      f.rot = t * 2.5 + f.phase;
+      f.position.y = f.base.y + Math.sin(t * 3 + f.phase) * 0.1;
+    }
+    fruitQuat.setFromAxisAngle(Y, f.rot);
+    fruitScale.setScalar(f.visible ? Math.max(0.0001, f.scale) : 0.0001);
+    fruitMatrix.compose(f.position, fruitQuat, fruitScale);
+    for (const m of fruits.meshes) m.setMatrixAt(i, fruitMatrix);
+  });
+  for (const m of fruits.meshes) m.instanceMatrix.needsUpdate = true;
 }
 
 // Loop
@@ -473,19 +491,7 @@ function frame() {
   }
 
   // Ambient animation
-  for (const f of fruits) {
-    const u = f.userData;
-    if (u.taken) {
-      if (!f.visible) continue;
-      u.pop += dt * 5;
-      f.position.y += dt * 5;
-      f.scale.setScalar(Math.max(0, 1 - u.pop));
-      if (u.pop >= 1) f.visible = false;
-      continue;
-    }
-    f.rotation.y = t * 2.5 + u.phase;
-    f.position.y = u.base.y + Math.sin(t * 3 + u.phase) * 0.1;
-  }
+  updateFruit(dt);
   gem.rotation.y = t * 1.5;
   gem.position.y = L.gemPosition.y + Math.sin(t * 2) * 0.15;
   if (Math.random() < 0.08 && gem.visible) fx.sparkle(gem.position, 0x9fe3ff, 1);
@@ -510,7 +516,11 @@ resize();
 load().then(() => {
   // Dev-only hook for stepping the simulation from the console
   if (import.meta.env.DEV) {
-    window.__game = { state, player, world, enemies, crates: world.crates, ui, step: (dt = 1 / 60) => simulate(dt) };
+    window.__game = {
+      state, player, world, enemies, crates: world.crates, ui, renderer,
+      step: (dt = 1 / 60) => simulate(dt),
+      render: () => (tier.post ? post.render() : renderer.render(scene, camera))
+    };
   }
   if (new URLSearchParams(location.search).has('debug')) {
     import('./debug.js').then(m => m.createDebugPanel({ player, rig, state, applyTier, renderer, post, sun, hemi, L }));

@@ -254,7 +254,7 @@ export function buildScenery(scene, { textures, quality, rand }) {
   // Bushes: a few soft blobs merged into one shape, instanced
   const bushParts = [];
   for (let i = 0; i < 3; i++) {
-    const g = blob(0.75 - i * 0.12, 3, 0.3, i * 7);
+    const g = blob(0.75 - i * 0.12, 2, 0.3, i * 7);
     g.translate((i - 1) * 0.55, 0.15 + (i === 1 ? 0.25 : 0), (i % 2) * 0.3);
     bushParts.push(g);
   }

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Gradient sky dome with a soft sun glow, some puffy clouds, and an environment
 // map baked from the same sky so materials pick up matching reflections.
@@ -55,18 +56,19 @@ export function createSky(scene, renderer, rand) {
 
   // Clouds: clusters of smooth blobs, lit from the sun side
   const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, emissive: 0xbfd8e8, emissiveIntensity: 0.35 });
-  const blob = new THREE.IcosahedronGeometry(1, 2);
   const clouds = [];
   for (let i = 0; i < 14; i++) {
-    const g = new THREE.Group();
+    // Each cloud is one merged mesh, so it costs a single draw call
+    const parts = [];
     const n = 4 + Math.floor(rand() * 4);
     for (let j = 0; j < n; j++) {
-      const m = new THREE.Mesh(blob, cloudMat);
       const s = 3 + rand() * 4;
-      m.scale.set(s * 1.3, s * 0.8, s);
-      m.position.set((j - n / 2) * 4 + rand() * 2, rand() * 2 - (Math.abs(j - n / 2) * 0.6), rand() * 3);
-      g.add(m);
+      const b = new THREE.IcosahedronGeometry(1, 2);
+      b.scale(s * 1.3, s * 0.8, s);
+      b.translate((j - n / 2) * 4 + rand() * 2, rand() * 2 - (Math.abs(j - n / 2) * 0.6), rand() * 3);
+      parts.push(b);
     }
+    const g = new THREE.Mesh(mergeGeometries(parts), cloudMat);
     g.position.set(-200 + rand() * 400, 45 + rand() * 35, -320 + rand() * 260);
     g.userData.speed = 0.8 + rand() * 1.5;
     scene.add(g);

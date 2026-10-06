@@ -8,7 +8,7 @@ import * as THREE from 'three';
 //   jungle     z -75 .. -100  "!" crate with ghost crates, faster crab
 //   step up    z -100         ledge you have to jump
 //   ruins A    z -100 .. -112
-//   gap 2      z -112 .. -130 crumbling platforms, then a moving platform
+//   gap 2      z -112 .. -130 a moving platform, then two crumbling ones
 //   ruins B    z -130 .. -180 metal crate stairs, TNT, gem on a pedestal
 
 export const PATH_HALF_WIDTH = 4.4;
@@ -31,13 +31,14 @@ export const surfaces = [
 
 // Platforms that fall a moment after Pip lands on them, then come back
 export const crumblers = [
-  { x0: -1.5, x1: 1.5, z0: -117, z1: -114, top: 1 },
-  { x0: -1.5, x1: 1.5, z0: -122, z1: -119, top: 1.4 }
+  { x0: -1.5, x1: 1.5, z0: -122, z1: -119, top: 1.2 },
+  { x0: -1.5, x1: 1.5, z0: -127, z1: -124, top: 1.4 }
 ];
 
 // Platforms that slide back and forth along `axis` by `range` from their rest position
 export const movers = [
-  { x0: -1.5, x1: 1.5, z0: -127.5, z1: -124.5, top: 1.2, axis: 'x', range: 2.6, speed: 0.8 }
+  // Comes first, so you can wait on solid ground for it to line up
+  { x0: -1.5, x1: 1.5, z0: -117, z1: -114, top: 1.2, axis: 'x', range: 2.6, speed: 0.8 }
 ];
 
 export const crateSpots = [
@@ -106,7 +107,7 @@ export function fruitSpots() {
   line(1.5, -78, -80, 3);
   line(0, -92, -97, 4, 1.6);
   line(0, -103, -109, 4);
-  arc([[0, 2.6, -115.5], [0, 3.0, -120.5], [0, 3.0, -126], [0, 2.4, -131]]);
+  arc([[0, 3.0, -118], [0, 3.0, -123], [0, 3.2, -128], [0, 2.4, -131]]);
   // Top of the metal crate stairs
   arc([[3, 5.4, -144], [3, 5.6, -146], [3, 5.4, -148], [2, 5.0, -150]]);
   line(-2.5, -138, -143, 4);

@@ -108,7 +108,7 @@ export function createCrateFactory(scene, world, fx) {
   for (const [k, draw] of Object.entries(textureDraw)) {
     const metal = k === 'metal' || k === 'activator';
     mats[k] = new THREE.MeshStandardMaterial({
-      map: canvasTexture(S, draw), roughness: metal ? 0.35 : 0.75, metalness: metal ? 0.6 : 0
+      map: canvasTexture(S, draw), roughness: metal ? 0.5 : 0.75, metalness: metal ? 0.25 : 0
     });
   }
   const ghostMat = new THREE.MeshBasicMaterial({ color: 0x9fe3ff, wireframe: true, transparent: true, opacity: 0.55 });

@@ -195,6 +195,7 @@ export function createUI(handlers) {
 
   function showFinish({ secs, fruit, fruitTotal, crates, crateTotal }) {
     mode = 'finished';
+    hideCard();
     touch.hidden = true;
     hint.classList.remove('show');
     $('pauseBtn').hidden = true;
