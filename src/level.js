@@ -52,10 +52,10 @@ export const movers = [
   { x0: -1.5, x1: 1.5, z0: -231.6, z1: -228.4, top: 2.75, axis: 'y', range: 1.8, speed: 0.7 }
 ];
 
-// Logs roll from the temple gate toward the camera. Each lane is an x range;
-// the pattern repeats, one log every `every` seconds.
+// Logs tumble over the temple gate from high up, land, and roll toward the
+// camera. Each lane is an x range; the pattern repeats, one log every `every` seconds.
 export const logRun = {
-  from: -201, to: -177, speed: 5, every: 2.4, base: 1, radius: 0.55,
+  from: -205, to: -177, speed: 5, every: 2.4, base: 1, radius: 0.55, drop: 9, dropTime: 0.9,
   lanes: [[-4.4, 4.4], [-4.4, 0], [0, 4.4], [-4.4, 4.4], [0, 4.4], [-4.4, 0]]
 };
 
@@ -115,7 +115,9 @@ export const crateSpots = [
   // Temple top
   { x: -3,   z: -238, type: 'basic' },
   { x: 3,    z: -238, type: 'basic' },
-  { x: -3,   z: -242, type: 'bounce' }
+  { x: -3,   z: -242, type: 'bounce' },
+  // Sets off every nitro crate in the level, so they count toward the total too
+  { x: -3,   z: -247.5, type: 'detonator' }
 ];
 
 export const enemySpots = [

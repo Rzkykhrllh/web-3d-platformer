@@ -39,7 +39,7 @@ function gemModel() {
   ], 8);
   geo.computeVertexNormals();
   const solid = toon({ color: 0x3fe07a, emissive: 0x16a24a, emissiveIntensity: 0.6, flatShading: true });
-  const locked = new THREE.MeshBasicMaterial({ color: 0x9fe3b4, transparent: true, opacity: 0.4, depthWrite: false });
+  const locked = new THREE.MeshBasicMaterial({ color: 0x5fd68a, transparent: true, opacity: 0.7, depthWrite: false });
   const { group, body, hull } = outlined(geo, locked);
   hull.visible = false;
   return { root: group, body, hull, solid, locked };

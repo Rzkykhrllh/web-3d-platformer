@@ -6,6 +6,8 @@ import { TIERS } from './quality.js';
 // copy good values back into config.js.
 export function createDebugPanel({ player, state, applyTier, renderer, post, sun, hemi, openGem }) {
   const gui = new GUI({ title: 'Debug' });
+  // For poking at the game from the browser console
+  window.game = { player, state };
 
   const move = gui.addFolder('Player');
   move.add(PLAYER, 'runSpeed', 3, 14, 0.1);

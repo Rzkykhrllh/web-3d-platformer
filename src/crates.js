@@ -7,7 +7,8 @@ import { toon } from './render/toon.js';
 //  basic       breaks on stomp or spin
 //  bonus       "?" crate, same as basic, usually holds content
 //  tnt         stomp or bonk lights a 3 s fuse, spin blows it up at once
-//  nitro       blows up the moment anything touches it; doesn't count toward the total
+//  nitro       blows up the moment anything touches it
+//  detonator   metal "!" crate, unbreakable; hitting it sets off every nitro crate
 //  bounce      stomp bounces Pip high and drops fruit, breaks after 5 bounces or a spin
 //  checkpoint  breaking it moves the respawn point here
 //  activator   "!" crate, unbreakable; hitting it turns ghost crates solid
@@ -18,7 +19,7 @@ export const TNT_FUSE = 3;
 export const TNT_RADIUS = 3.6;
 export const BOUNCE_HITS = 5;
 
-const COUNTED = new Set(['basic', 'bonus', 'tnt', 'bounce', 'checkpoint']);
+const COUNTED = new Set(['basic', 'bonus', 'tnt', 'nitro', 'bounce', 'checkpoint']);
 
 function frame(ctx, s, fill, edge) {
   ctx.fillStyle = fill; ctx.fillRect(0, 0, s, s);
@@ -96,6 +97,10 @@ const textureDraw = {
   nitro: (ctx, s) => {
     metalFace(ctx, s, ['#5fd35a', '#23862a'], '#b6f5a8');
     label(ctx, s, 'NITRO', 62, '#eaffde', '#145a1a');
+  },
+  detonator: (ctx, s) => {
+    metalFace(ctx, s, ['#4a5258', '#272d33'], '#8fa0aa');
+    label(ctx, s, '!', 150, '#5fd35a', '#0f3d13');
   },
   metal: (ctx, s) => {
     metalFace(ctx, s, ['#aab4bd', '#6c7781'], '#d6dde3');

@@ -10,7 +10,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 //   COL_*          invisible collider: its bounding box becomes a walkable block
 //   WALK_*         visible mesh that is also a walkable block
 //   CRATE_<type>   crate standing on this point (basic, bonus, tnt, bounce,
-//                  checkpoint, activator, metal, nitro). Props: content, ghost
+//                  checkpoint, activator, metal, nitro, detonator). Props: content, ghost
 //   FRUIT*         a fruit at this point
 //   ENEMY*         a crab patrolling around this point. Props: range, speed
 //   MOVER*         moving platform (mesh). Props: axis ("x", "y" or "z"), range, speed

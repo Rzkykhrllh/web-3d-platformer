@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { toon } from './render/toon.js';
 
-// Timed hazards: logs rolling toward the camera and fire vents in the floor.
+// Timed hazards: logs tumbling over the temple gate and rolling toward the
+// camera, and fire vents in the floor.
 // Both are pure functions of the simulation time, so they never drift and
-// look the same behind the menu as in play. Touching either one hurts.
+// look the same behind the menu as in play. main.js decides what a touch does.
 
 const mod = (a, n) => ((a % n) + n) % n;
 
@@ -21,34 +22,43 @@ function createLogs(scene, run) {
     scene.add(m);
     return m;
   });
-  const live = []; // { x0, x1, z } of logs that can hurt this step
-  let lastSpawn = -1;
+  const live = []; // { x0, x1, y, z } of logs that can hurt this step
+  let lastLanded = -1;
 
-  function update(t, onSpawn) {
+  // Height above the ground: falls from `drop` up over `dropTime`, then a
+  // couple of shrinking bounces
+  function lift(age) {
+    if (age < run.dropTime) { const u = age / run.dropTime; return run.drop * (1 - u * u); }
+    const a = age - run.dropTime;
+    return Math.abs(Math.sin(a * 9)) * 0.6 * Math.exp(-a * 5);
+  }
+
+  function update(t, onLand) {
     live.length = 0;
     const newest = Math.floor(t / run.every);
-    if (newest !== lastSpawn) { if (lastSpawn >= 0) onSpawn?.(); lastSpawn = newest; }
     pool.forEach((m, i) => {
       const k = newest - i;
       const age = t - k * run.every;
       if (k < 0 || age > life) { m.visible = false; return; }
       const [x0, x1] = run.lanes[k % run.lanes.length];
       const z = run.from + age * run.speed;
-      // Grow out of the gate, sink at the end of the run
-      const grow = Math.min(1, age / 0.3), sink = Math.max(0, age - (life - 0.5)) / 0.5;
+      if (age >= run.dropTime && k > lastLanded) { lastLanded = k; onLand?.((x0 + x1) / 2, z); }
+      // Sink into the ground at the end of the run
+      const sink = Math.max(0, age - (life - 0.5)) / 0.5;
+      const y = run.base + run.radius + lift(age) - sink * run.radius * 2;
       m.visible = true;
-      m.position.set((x0 + x1) / 2, run.base + run.radius - sink * run.radius * 2, z);
-      m.scale.set(x1 - x0, grow, grow);
+      m.position.set((x0 + x1) / 2, y, z);
+      m.scale.set(x1 - x0, 1, 1);
       m.rotation.x = (age * run.speed) / run.radius;
-      if (sink < 0.5) live.push({ x0, x1, z });
+      if (sink < 0.5) live.push({ x0, x1, y, z });
     });
   }
 
   // A little forgiving: feet just grazing the top of a log still clear it
   function touching(p, r) {
-    if (p.y > run.base + run.radius * 1.3) return null;
     for (const l of live) {
-      if (p.x + r > l.x0 && p.x - r < l.x1 && Math.abs(p.z - l.z) < run.radius + r * 0.5) return { x: p.x, z: l.z - 1 };
+      if (p.y > l.y + run.radius * 0.3 || p.y + 1.4 < l.y - run.radius) continue;
+      if (p.x + r > l.x0 && p.x - r < l.x1 && Math.abs(p.z - l.z) < run.radius + r * 0.5) return { x: p.x, z: l.z - 1, kind: 'log' };
     }
     return null;
   }
@@ -108,7 +118,7 @@ function createVents(scene, jets) {
     for (const v of vents) {
       if (!v.burning || p.y > v.base + 2.2) continue;
       const half = v.size / 2 + r * 0.5;
-      if (Math.abs(p.x - v.x) < half && Math.abs(p.z - v.z) < half) return { x: v.x, z: v.z };
+      if (Math.abs(p.x - v.x) < half && Math.abs(p.z - v.z) < half) return { x: v.x, z: v.z, kind: 'fire' };
     }
     return null;
   }
@@ -122,10 +132,10 @@ export function createHazards(scene, level, events = {}) {
   const vents = level.fireJets?.length ? createVents(scene, level.fireJets) : null;
   return {
     update(t) {
-      logs?.update(t, () => events.logSpawn?.(level.logRun));
+      logs?.update(t, (x, z) => events.logLand?.(x, z));
       vents?.update(t, v => events.ignite?.(v));
     },
-    // Where the hit came from, or null if p (radius r) is clear
+    // { x, z, kind: 'log' | 'fire' } for what hit p (radius r), or null if clear
     touching(p, r) { return logs?.touching(p, r) ?? vents?.touching(p, r) ?? null; }
   };
 }

@@ -60,7 +60,7 @@ The built-in level is described in `src/level.js`. A level can also be built in 
 |---|---|---|
 | `WALK_` | Visible mesh you can stand on (its bounding box is the collider) | |
 | `COL_` | Invisible collider, for when the visible mesh is too detailed | |
-| `CRATE_basic`, `CRATE_bonus`, `CRATE_tnt`, `CRATE_bounce`, `CRATE_checkpoint`, `CRATE_activator`, `CRATE_metal`, `CRATE_nitro` | Crate standing on this point (use an Empty) | `content` (an id from `content.js`), `ghost` (bool) |
+| `CRATE_basic`, `CRATE_bonus`, `CRATE_tnt`, `CRATE_bounce`, `CRATE_checkpoint`, `CRATE_activator`, `CRATE_metal`, `CRATE_nitro`, `CRATE_detonator` | Crate standing on this point (use an Empty) | `content` (an id from `content.js`), `ghost` (bool) |
 | `FRUIT` | A fruit at this point | |
 | `ENEMY` | Crab patrolling sideways around this point | `range`, `speed` |
 | `MOVER` | Moving platform (the mesh itself moves) | `axis` (`x`, `y` or `z`), `range`, `speed` |

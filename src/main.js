@@ -62,6 +62,7 @@ const fx = particles.fx;
 const state = {
   started: false, done: false,
   fruit: 0, cratesBroken: 0, crateTotal: 0, crystal: false, gem: false, gemHintAt: -99,
+  dying: 0, detonations: [],
   checkpoint: new THREE.Vector3(), playTime: 0,
   hitStop: 0, simTime: 0, lastStep: 0
 };
@@ -204,7 +205,10 @@ function buildEntities() {
   });
 
   hazards = createHazards(scene, level, {
-    logSpawn: run => { if (Math.abs(player.state.pos.z - run.from) < 30) audio.play('rumble', 0); },
+    logLand: (x, z) => {
+      fx.dust(new THREE.Vector3(x, level.logRun.base, z), 6, 0xb59470);
+      if (Math.abs(player.state.pos.z - z) < 30) { audio.play('rumble', panOf(x)); if (Math.abs(player.state.pos.z - z) < 12) shake(0.12); }
+    },
     ignite: v => {
       const d = Math.hypot(player.state.pos.x - v.x, player.state.pos.z - v.z);
       if (d < 14) audio.play('flame', panOf(v.x), 0.12 * (1 - d / 14));
@@ -302,6 +306,20 @@ function hitCrate(c, how) {
         if (c.hits >= BOUNCE_HITS) breakCrate(c);
       }
       return;
+    case 'detonator':
+      factory.poke(c);
+      if (!c.activated) {
+        c.activated = true;
+        audio.play('activate');
+        // Set them off one after another, nearest first
+        const p = player.state.pos;
+        world.crates.filter(o => o.type === 'nitro' && !o.broken && !o.ghost)
+          .sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))
+          .forEach((o, i) => state.detonations.push({ crate: o, at: state.simTime + 0.4 + i * 0.25 }));
+        ui.toast('Nitro detonated!');
+      } else audio.play('metal');
+      if (how === 'stomp') player.bounce(PLAYER.crateBounce);
+      return;
     case 'activator':
       factory.poke(c);
       if (!c.activated) {
@@ -353,16 +371,12 @@ function explodeTnt(c) {
   state.hitStop = FEEL.hitStop * 2;
   const p = player.state.pos;
   const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz);
-  if (d < TNT_RADIUS && Math.abs(p.y - c.base) < 2.5) {
-    const k = (1 - d / TNT_RADIUS) * 12 + 4;
-    player.knock(dx / (d || 1), dz / (d || 1), k, 9);
-    if (player.hurt(c.x, c.z)) loseFruit();
-  }
+  if (d < TNT_RADIUS && Math.abs(p.y - c.base) < 2.5) die();
   for (const o of world.crates) {
     if (o.broken || o.ghost || o === c) continue;
     if (Math.hypot(o.x - c.x, o.z - c.z) < TNT_RADIUS * 0.6 && Math.abs(o.base - c.base) < 1.5) {
       if (o.type === 'tnt' || o.type === 'nitro') explodeTnt(o);
-      else if (o.type !== 'activator') breakCrate(o);
+      else if (o.type !== 'activator' && o.type !== 'detonator') breakCrate(o);
     }
   }
   for (const e of enemies.list) if (e.alive && e.root.position.distanceTo(c.group.position) < TNT_RADIUS) defeatEnemy(e);
@@ -372,7 +386,8 @@ function explodeTnt(c) {
 function checkHazards() {
   const p = player.state.pos;
   const hit = hazards.touching(p, PLAYER.radius);
-  if (hit && player.hurt(hit.x, hit.z)) loseFruit();
+  if (hit?.kind === 'fire') die();
+  else if (hit && player.hurt(hit.x, hit.z)) loseFruit();
   for (const c of world.crates) {
     if (c.type !== 'nitro' || !c.solid || c.broken) continue;
     const reach = 0.5 + PLAYER.radius + 0.05;
@@ -454,6 +469,20 @@ function respawn() {
   ui.flash();
 }
 
+// Fire and explosions are deadly: a moment to see what happened, then back to the checkpoint
+const DEATH_PAUSE = 0.7;
+function die() {
+  if (state.dying > 0 || state.done) return;
+  state.dying = DEATH_PAUSE;
+  const p = player.state.pos;
+  player.model.root.visible = false;
+  fx.dust(p, 10, 0x4a4038);
+  fx.stars(p.clone().setY(p.y + 1));
+  audio.play('hurt');
+  shake(0.4);
+  vibrate(120);
+}
+
 // Crystal, gem and the warp pad
 function checkPickups() {
   const p = player.state.pos, chest = p.clone().setY(p.y + 0.8);
@@ -512,6 +541,17 @@ function simulate(dt) {
   state.playTime += dt;
   platforms.update(dt, state.simTime);
   hazards.update(state.simTime);
+  for (const d of state.detonations) if (d.at <= state.simTime) explodeTnt(d.crate);
+  state.detonations = state.detonations.filter(d => d.at > state.simTime);
+  if (state.dying > 0) {
+    // Frozen while the death plays out; the world keeps going
+    readInput();
+    state.dying -= dt;
+    if (state.dying <= 0) respawn();
+    enemies.update(dt);
+    for (const c of factory.update(dt, state.simTime).exploded) explodeTnt(c);
+    return;
+  }
   player.update(dt, readInput());
   enemies.update(dt);
   checkEnemies();
