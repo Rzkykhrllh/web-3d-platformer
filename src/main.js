@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import './style.css';
-import { PLAYER, FEEL, LEVEL_URL } from './config.js';
+import { PLAYER, FEEL, LEVEL_URL, CHARACTER } from './config.js';
+import { createPip } from './pip.js';
+import { createCat } from './characters/cat.js';
 import { seededRandom, mat } from './util.js';
 import { createWorld } from './world.js';
 import { createPlayer } from './player.js';
@@ -224,7 +226,9 @@ function buildEntities() {
   gem.position.copy(level.gemPosition);
   scene.add(gem);
 
-  player = createPlayer(scene, world, playerEvents);
+  const characters = { cat: createCat, pip: createPip };
+  const charName = new URLSearchParams(location.search).get('char') || CHARACTER;
+  player = createPlayer(scene, world, playerEvents, characters[charName] ?? createCat);
   state.checkpoint.copy(level.checkpoints[0]);
   player.reset(state.checkpoint);
   rig = createCameraRig(camera, level.path);

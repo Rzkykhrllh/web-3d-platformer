@@ -52,3 +52,6 @@ export const AUDIO = {
 // Path to a level exported from Blender (e.g. 'levels/island.glb' in public/).
 // null uses the built-in level from level.js. ?level=... in the URL overrides it.
 export const LEVEL_URL = null;
+
+// Player character: 'cat' or 'pip'. ?char=pip in the URL overrides it.
+export const CHARACTER = 'cat';

@@ -15,6 +15,9 @@ Then open http://localhost:4000 (if that port is busy, Vite picks the next free 
 |---|---|
 | `?debug` | Live tuning panel: movement, camera, lighting, quality, teleport |
 | `?level=levels/sample.gltf` | Load a level exported from Blender instead of the built-in one |
+| `?char=pip` | Play as Pip instead of the cat (default set by `CHARACTER` in `src/config.js`) |
+
+`/character.html` (dev only) shows a character on its own with front / side / back views and a run cycle, for comparing against reference art.
 
 ## Controls
 

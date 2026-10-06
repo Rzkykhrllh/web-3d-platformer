@@ -9,8 +9,9 @@ import { createPip } from './pip.js';
 
 const approach = (v, target, rate) => (v < target ? Math.min(target, v + rate) : Math.max(target, v - rate));
 
-export function createPlayer(scene, world, events) {
-  const model = createPip();
+// `createModel` builds the character (see src/characters); defaults to Pip
+export function createPlayer(scene, world, events, createModel = createPip) {
+  const model = createModel();
   scene.add(model.root);
 
   // Soft round shadow that always sits on the ground under Pip, so landings are easy to judge
@@ -211,6 +212,13 @@ export function createPlayer(scene, world, events) {
     const stride = running ? Math.sin(s.walk) * 0.25 : 0;
     model.feet[0].position.z = 0.08 + stride;
     model.feet[1].position.z = 0.08 - stride;
+    if (model.arms) {
+      // Arms swing against the legs; raised a little while airborne
+      const swing = running ? Math.sin(s.walk) * 0.7 : 0;
+      const air = s.onGround ? 0 : -0.5;
+      model.arms[0].rotation.x = -swing + air;
+      model.arms[1].rotation.x = swing + air;
+    }
     const tuck = s.onGround ? 0 : 0.12;
     model.feet[0].position.y = model.feet[1].position.y = 0.1 + tuck;
 
