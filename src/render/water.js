@@ -61,8 +61,9 @@ export function createWater(scene, { size = 600, segments = 160, y = -2.3 } = {}
         #include <color_fragment>
         vec2 q = vWorld.xz * 0.35;
         float n = vnoise(q + uTime * 0.25) * 0.6 + vnoise(q * 2.3 - uTime * 0.35) * 0.4;
-        // Cell-like caustic bands and a few bright glints on wave crests
-        float bands = smoothstep(0.62, 0.7, n) * 0.35;
+        // Thin caustic lines along one level of the noise. (A threshold on the
+        // noise instead made lone blobs, which toon shading turned into flat white ovals.)
+        float bands = (1.0 - smoothstep(0.0, 0.035, abs(n - 0.55))) * 0.3;
         float crest = smoothstep(0.15, 0.32, vWorld.y + 2.3);
         diffuseColor.rgb = mix(diffuseColor.rgb * 0.75, diffuseColor.rgb * 1.15, n);
         diffuseColor.rgb += vec3(0.75, 0.95, 1.0) * (bands + crest * 0.25);`);
