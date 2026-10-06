@@ -60,7 +60,7 @@ export const LEVEL_URL = null;
 export const CHARACTER = 'cat';
 
 // Game title on the menu and the browser tab
-export const GAME_NAME = "Airu's Island";
+export const GAME_NAME = 'N. Usantara Island';
 
 // Portfolio content: cards when crates break, "See everything", the summary.
 // Off for now while the game itself gets built; the crates still count.

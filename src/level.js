@@ -9,8 +9,9 @@ import * as THREE from 'three';
 //   step up    z -100         ledge you have to jump
 //   ruins A    z -100 .. -112 the pink power crystal, halfway through
 //   gap 2      z -112 .. -130 a moving platform, then two crumbling ones
-//   ruins B    z -130 .. -176 metal crate stairs, TNT, a crate on the old pedestal
-//   log run    z -176 .. -202 logs roll out of the temple gate; jump them
+//   ruins B    z -130 .. -174 metal crate stairs, TNT, a crate on the old pedestal
+//   chasm      z -174 .. -178 the logs roll off into it; jump across
+//   log run    z -178 .. -202 logs roll out of the temple gate; jump them
 //   fire hall  z -202 .. -228 fire jets in a diagonal wave, nitro crates
 //   lift       z -228 .. -232 a platform rides up to the temple top
 //   temple top z -232 .. -256 green gem (opens once every crate is broken), warp pad
@@ -30,7 +31,8 @@ export const surfaces = [
   { kind: 'stone', x0: -1.6, x1: 1.6, z0: -73,   z1: -68.5, top: 1.2 },
   { kind: 'sand',  x0: -4.5, x1: 4.5, z0: -100,  z1: -75,   top: 0 },
   { kind: 'dirt',  x0: -4.5, x1: 4.5, z0: -112,  z1: -100,  top: 1 },
-  { kind: 'dirt',  x0: -4.5, x1: 4.5, z0: -202,  z1: -130,  top: 1 },
+  { kind: 'dirt',  x0: -4.5, x1: 4.5, z0: -174,  z1: -130,  top: 1 },
+  { kind: 'dirt',  x0: -4.5, x1: 4.5, z0: -202,  z1: -178,  top: 1 },
   { kind: 'stone', x0: -1.4, x1: 1.4, z0: -167,  z1: -163,  top: 1.6 },
   { kind: 'stone', x0: -4.5, x1: 4.5, z0: -228,  z1: -202,  top: 1 },
   { kind: 'stone', x0: -4.5, x1: 4.5, z0: -256,  z1: -232,  top: TEMPLE_TOP },
@@ -52,10 +54,11 @@ export const movers = [
   { x0: -1.5, x1: 1.5, z0: -231.6, z1: -228.4, top: 2.75, axis: 'y', range: 1.8, speed: 0.7 }
 ];
 
-// Logs tumble over the temple gate from high up, land, and roll toward the
-// camera. Each lane is an x range; the pattern repeats, one log every `every` seconds.
+// Logs tumble over the temple gate from high up, land, roll toward the camera
+// and drop off `edge` into the chasm. Each lane is an x range; the pattern
+// repeats, one log every `every` seconds.
 export const logRun = {
-  from: -205, to: -177, speed: 5, every: 2.4, base: 1, radius: 0.55, drop: 9, dropTime: 0.9,
+  from: -205, edge: -178, to: -174, speed: 5, every: 2.4, base: 1, radius: 0.55, drop: 9, dropTime: 0.9, water: -2.3,
   lanes: [[-4.4, 4.4], [-4.4, 0], [0, 4.4], [-4.4, 4.4], [0, 4.4], [-4.4, 0]]
 };
 
@@ -102,7 +105,7 @@ export const crateSpots = [
   { x: 2.5,  z: -157, type: 'basic', content: 'island' },
   // The old pedestal before the log run
   { x: 0,    z: -165, type: 'bonus', base: 1.6 },
-  { x: 2.6,  z: -174, type: 'checkpoint' },
+  { x: 2.6,  z: -171, type: 'checkpoint' },
   // Fire hall: crates between the vent rows, nitro where you'd dodge to
   { x: -3.5, z: -208.5, type: 'basic' },
   { x: 3.5,  z: -208.5, type: 'nitro' },
@@ -135,7 +138,7 @@ export const checkpoints = [
   new THREE.Vector3(0, 0, 2),
   new THREE.Vector3(0, 0, -77),
   new THREE.Vector3(0, 1, -132),
-  new THREE.Vector3(0, 1, -176)
+  new THREE.Vector3(0, 1, -172)
 ];
 
 export function fruitSpots() {
@@ -163,7 +166,8 @@ export function fruitSpots() {
   arc([[3, 5.4, -144], [3, 5.6, -146], [3, 5.4, -148], [2, 5.0, -150]]);
   line(-2.5, -138, -143, 4);
   line(0, -153, -160, 4);
-  // Over the log run, at jump height
+  // Across the chasm, then over the log run at jump height
+  arc([[0, 2.4, -174.6], [0, 3, -176], [0, 2.4, -177.4]]);
   line(0, -182, -198, 5, 2);
   // Over the fire vents, for the brave
   line(-3.5, -211, -211, 1); line(0, -216, -216, 1); line(3.5, -221, -221, 1);

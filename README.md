@@ -1,4 +1,4 @@
-# Island Portfolio
+# N. Usantara Island
 
 A playable portfolio built with Three.js and Vite. Run down a jungle path, smash crates, and each crate reveals part of the portfolio. Everything you see is generated in code for now (models, textures, sound); see `ROADMAP.md` for what still needs real assets.
 

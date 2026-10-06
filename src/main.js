@@ -209,6 +209,12 @@ function buildEntities() {
   });
 
   hazards = createHazards(scene, level, {
+    logSplash: (x, z) => {
+      const at = new THREE.Vector3(x, level.logRun.water + 0.2, z);
+      fx.sparkle(at, 0xdff6ff, 14);
+      fx.dust(at, 8, 0xbfe9ff);
+      if (Math.abs(player.state.pos.z - z) < 20) audio.play('land', 0.6);
+    },
     logLand: (x, z) => {
       fx.dust(new THREE.Vector3(x, level.logRun.base, z), 6, 0xb59470);
       if (Math.abs(player.state.pos.z - z) < 30) { audio.play('rumble', panOf(x)); if (Math.abs(player.state.pos.z - z) < 12) shake(0.12); }

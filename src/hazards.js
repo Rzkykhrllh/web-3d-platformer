@@ -7,6 +7,7 @@ import { toon } from './render/toon.js';
 // look the same behind the menu as in play. main.js decides what a touch does.
 
 const mod = (a, n) => ((a % n) + n) % n;
+const FALL_GRAVITY = 26;
 
 function createLogs(scene, run) {
   const geo = new THREE.CylinderGeometry(run.radius, run.radius, 1, 16, 1);
@@ -23,7 +24,7 @@ function createLogs(scene, run) {
     return m;
   });
   const live = []; // { x0, x1, y, z } of logs that can hurt this step
-  let lastLanded = -1;
+  let lastLanded = -1, lastSplashed = -1;
 
   // Height above the ground: falls from `drop` up over `dropTime`, then a
   // couple of shrinking bounces
@@ -33,7 +34,7 @@ function createLogs(scene, run) {
     return Math.abs(Math.sin(a * 9)) * 0.6 * Math.exp(-a * 5);
   }
 
-  function update(t, onLand) {
+  function update(t, onLand, onSplash) {
     live.length = 0;
     const newest = Math.floor(t / run.every);
     pool.forEach((m, i) => {
@@ -43,14 +44,15 @@ function createLogs(scene, run) {
       const [x0, x1] = run.lanes[k % run.lanes.length];
       const z = run.from + age * run.speed;
       if (age >= run.dropTime && k > lastLanded) { lastLanded = k; onLand?.((x0 + x1) / 2, z); }
-      // Sink into the ground at the end of the run
-      const sink = Math.max(0, age - (life - 0.5)) / 0.5;
-      const y = run.base + run.radius + lift(age) - sink * run.radius * 2;
+      // Past the edge it keeps rolling forward and falls into the chasm
+      const over = Math.max(0, (z - (run.edge ?? run.to)) / run.speed);
+      const y = run.base + run.radius + lift(age) - 0.5 * FALL_GRAVITY * over * over;
       m.visible = true;
       m.position.set((x0 + x1) / 2, y, z);
       m.scale.set(x1 - x0, 1, 1);
       m.rotation.x = (age * run.speed) / run.radius;
-      if (sink < 0.5) live.push({ x0, x1, y, z });
+      if (y > run.base - 0.5) live.push({ x0, x1, y, z });
+      if (run.water !== undefined && y < run.water && k > lastSplashed) { lastSplashed = k; onSplash?.((x0 + x1) / 2, z); }
     });
   }
 
@@ -132,7 +134,7 @@ export function createHazards(scene, level, events = {}) {
   const vents = level.fireJets?.length ? createVents(scene, level.fireJets) : null;
   return {
     update(t) {
-      logs?.update(t, (x, z) => events.logLand?.(x, z));
+      logs?.update(t, (x, z) => events.logLand?.(x, z), (x, z) => events.logSplash?.(x, z));
       vents?.update(t, v => events.ignite?.(v));
     },
     // { x, z, kind: 'log' | 'fire' } for what hit p (radius r), or null if clear
